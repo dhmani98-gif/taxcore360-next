@@ -23,11 +23,13 @@ export default function DashboardLayout({
 }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-slate-950 flex">
-      {/* Sidebar */}
-      <Sidebar />
+      {/* Sidebar - Fixed width */}
+      <div className="w-[280px] flex-shrink-0">
+        <Sidebar />
+      </div>
       
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      {/* Main Content - Takes remaining space */}
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header className="bg-slate-900 border-b border-slate-800 px-6 py-4">
           <div className="flex items-center justify-between">

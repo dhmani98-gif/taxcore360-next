@@ -228,9 +228,9 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-[280px] min-w-[280px] bg-gradient-to-b from-[#0a1628] via-[#0f1f38] via-[40%] to-[#101f3a] border-r border-white/[0.05] h-screen fixed left-0 top-0 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.2)] z-50">
+    <aside className="w-[280px] min-w-[280px] bg-gradient-to-b from-[#0a1628] via-[#0f1f38] via-[40%] to-[#101f3a] border-r border-white/[0.05] h-screen sticky top-0 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.2)] z-50">
       {/* Logo Section - Exact specs: 40x40px with 12px rounded corners */}
-      <div className="flex-none p-6">
+      <div className="flex-none p-6 pb-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#3b82f6] to-[#2563eb] flex items-center justify-center shadow-[0_0_12px_rgba(59,130,246,0.4)] border border-white/[0.10]">
             <Briefcase className="w-5 h-5 text-white" />
@@ -242,8 +242,8 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation - Scrollable Content with Custom Scrollbar */}
-      <nav className="flex-1 overflow-y-auto px-4 py-2 scrollbar-custom">
+      {/* Navigation - Scrollable Content with Hidden Scrollbar */}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-2 scrollbar-hide">
         {/* Main Section - spacing 24px (mb-6) */}
         <div className="mb-6">
           <h3 
@@ -287,7 +287,7 @@ export default function Sidebar() {
       </nav>
 
       {/* User Section - with 1px border-top at 6% opacity */}
-      <div className="flex-none p-4 border-t border-white/[0.06]">
+      <div className="flex-none p-4 pt-3 border-t border-white/[0.06]">
         <div className="bg-white/[0.04] rounded-xl p-2.5">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-gradient-to-br from-[#3b82f6] to-[#4f46e5] rounded-lg flex items-center justify-center">
@@ -323,37 +323,16 @@ export default function Sidebar() {
           animation: slideDown 300ms ease-out;
         }
         
-        /* Custom Scrollbar - Hidden by default, thin and dark */
-        .scrollbar-custom {
-          scrollbar-width: thin;
-          scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
-        }
-        
-        .scrollbar-custom::-webkit-scrollbar {
-          width: 4px;
-          height: 4px;
-        }
-        
-        .scrollbar-custom::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        
-        .scrollbar-custom::-webkit-scrollbar-thumb {
-          background: rgba(148, 163, 184, 0.2);
-          border-radius: 4px;
-        }
-        
-        .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-          background: rgba(148, 163, 184, 0.4);
-        }
-        
-        /* Hide scrollbar when not hovering */
-        .scrollbar-custom {
+        /* Hide scrollbar completely */
+        .scrollbar-hide {
           -ms-overflow-style: none;
+          scrollbar-width: none;
         }
         
-        .scrollbar-custom:hover {
-          -ms-overflow-style: auto;
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+          width: 0;
+          height: 0;
         }
       `}</style>
     </aside>
