@@ -4,7 +4,6 @@
 begin;
 
 -- Add indexes for better performance
-create index if not exists w9_submissions_invite_id_idx on public.w9_submissions(invite_id);
 create index if not exists w9_submissions_approval_status_idx on public.w9_submissions(approval_status);
 create index if not exists w9_invites_vendor_id_idx on public.w9_invites(vendor_id);
 
