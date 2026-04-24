@@ -11,40 +11,71 @@ import {
 } from 'lucide-react';
 import { exportToExcel, exportToPDF, formatCurrency, formatSSN } from '@/lib/export';
 
-// Report Categories
+// Report Categories - Restructured per user requirements
 const REPORT_CATEGORIES = [
   {
-    id: 'tax-forms',
-    name: 'Tax Form Reports',
-    description: 'W-2, W-3, 1099-NEC, and W-9 compliance reports',
+    id: 'tax-compliance',
+    name: 'Tax Compliance Reports',
+    nameAr: 'تقارير الامتثال الضريبي',
+    description: 'Essential IRS compliance reports for tax season',
     icon: <FileText className="w-6 h-6" />,
     color: 'bg-blue-100 text-blue-700 border-blue-200',
     reports: [
-      { id: 'w2-w3-summary', name: 'W-2 / W-3 Summary', description: 'Complete employee wage and tax summary before final filing' },
-      { id: '1099-nec-overview', name: '1099-NEC Filing Overview', description: 'Independent contractors with payments over $600' },
-      { id: 'w9-status', name: 'W-9 Status Report', description: 'Vendor W-9 completion status tracking' },
+      { 
+        id: 'w2-w3-summary', 
+        name: 'W-2/W-3 Filing Summary', 
+        description: 'A consolidated overview of all employee earnings and federal tax withholdings.' 
+      },
+      { 
+        id: '1099-nec-overview', 
+        name: '1099-NEC Tracking', 
+        description: 'Monitor non-employee compensation and identify contractors exceeding the $600 threshold.' 
+      },
+      { 
+        id: 'w9-status', 
+        name: 'W-9 Intake Status', 
+        description: 'Track pending and completed vendor certifications to ensure your records are IRS-ready.' 
+      },
     ]
   },
   {
-    id: 'payroll',
-    name: 'Payroll Reports',
-    description: 'Detailed payroll cycles, earnings, and hours',
+    id: 'payroll-earnings',
+    name: 'Payroll & Earnings',
+    nameAr: 'الرواتب والأجور',
+    description: 'Detailed payroll processing and employee earnings reports',
     icon: <DollarSign className="w-6 h-6" />,
     color: 'bg-emerald-100 text-emerald-700 border-emerald-200',
     reports: [
-      { id: 'payroll-register', name: 'Payroll Register', description: 'Gross Pay, Deductions, and Net Pay by cycle' },
-      { id: 'earnings-hours', name: 'Earnings & Hours Report', description: 'Regular and overtime hours breakdown' },
+      { 
+        id: 'payroll-register', 
+        name: 'Detailed Payroll Register', 
+        description: 'A complete breakdown of gross pay, deductions, and net pay for every pay period.' 
+      },
+      { 
+        id: 'earnings-hours', 
+        name: 'Employee Wage & Tax Statement', 
+        description: 'View individual earnings summaries, local taxes, and state disability insurance.' 
+      },
     ]
   },
   {
-    id: 'compliance',
-    name: 'Compliance & Audit',
-    description: 'Tax liability and discrepancy detection',
+    id: 'audit-system',
+    name: 'Audit & System Logic',
+    nameAr: 'التدقيق والنظام',
+    description: 'Automated audits and compliance verification',
     icon: <Shield className="w-6 h-6" />,
     color: 'bg-purple-100 text-purple-700 border-purple-200',
     reports: [
-      { id: 'tax-liability', name: 'Tax Liability Report', description: 'Current IRS liability based on payroll issued' },
-      { id: 'discrepancy', name: 'Discrepancy Report', description: 'Smart detection of missing SSNs and incomplete data' },
+      { 
+        id: 'discrepancy', 
+        name: 'IRS Discrepancy Alert', 
+        description: 'An automated audit report to detect missing TINs or incomplete address data before filing.' 
+      },
+      { 
+        id: 'tax-liability', 
+        name: 'Annual Tax Liability', 
+        description: 'Real-time calculation of your total tax obligations based on current payroll data.' 
+      },
     ]
   }
 ];
@@ -806,38 +837,51 @@ export default function ReportsPage() {
       title="Reports Dashboard"
       description="Comprehensive tax, payroll, and compliance reporting"
     >
-      <div className="space-y-8">
+      <div className="space-y-10">
         {REPORT_CATEGORIES.map((category) => (
-          <div key={category.id}>
-            <div className="flex items-center space-x-3 mb-4">
-              <div className={`p-2 rounded-lg ${category.color}`}>
+          <section key={category.id} className="border-b border-gray-200 pb-8 last:border-0 last:pb-0">
+            {/* Section Header - Bilingual */}
+            <div className="flex items-center space-x-3 mb-2">
+              <div className={`p-2.5 rounded-lg ${category.color}`}>
                 {category.icon}
               </div>
               <div>
-                <h2 className="text-xl font-bold text-[#111827]">{category.name}</h2>
-                <p className="text-sm text-[#667085]">{category.description}</p>
+                <h2 className="text-lg font-bold text-[#111827]">{category.name}</h2>
+                {category.nameAr && (
+                  <p className="text-xs text-[#667085] font-medium">{category.nameAr}</p>
+                )}
               </div>
             </div>
+            <p className="text-sm text-[#667085] mb-5 ml-12">{category.description}</p>
             
+            {/* Report Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {category.reports.map((report) => (
                 <div
                   key={report.id}
                   onClick={() => setSelectedReport(report.id)}
-                  className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer group"
+                  className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-xl hover:border-blue-400 hover:-translate-y-0.5 transition-all cursor-pointer group"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${category.color}`}>
                       <FileText className="w-5 h-5" />
                     </div>
-                    <ChevronRight className="w-5 h-5 text-[#667085] group-hover:text-blue-600 transition-colors" />
+                    <ChevronRight className="w-5 h-5 text-[#667085] group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
                   </div>
-                  <h3 className="font-semibold text-[#111827] mb-1">{report.name}</h3>
-                  <p className="text-sm text-[#667085]">{report.description}</p>
+                  <h3 className="font-semibold text-[#111827] mb-2 group-hover:text-blue-700 transition-colors">{report.name}</h3>
+                  <p className="text-sm text-[#667085] leading-relaxed">{report.description}</p>
+                  
+                  {/* View Report Link */}
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <span className="text-sm font-medium text-blue-600 group-hover:text-blue-700 flex items-center">
+                      View Report
+                      <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         ))}
       </div>
     </DashboardLayout>
