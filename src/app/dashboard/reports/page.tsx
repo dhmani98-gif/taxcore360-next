@@ -699,9 +699,10 @@ export default function ReportsPage() {
         title={report?.name || 'Report'}
         description={report?.description || ''}
       >
-        {/* Report Header */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Professional Report Header */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 shadow-sm">
+          {/* Top Navigation */}
+          <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-100">
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => setSelectedReport(null)}
@@ -716,13 +717,55 @@ export default function ReportsPage() {
               </span>
             </div>
             
+            {/* Export Buttons - Prominent */}
+            <div className="flex items-center space-x-2">
+              <button 
+                onClick={() => handleExportExcel(selectedReport || '')}
+                className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Export Excel</span>
+              </button>
+              <button 
+                onClick={() => {/* PDF Export */}}
+                className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download PDF</span>
+              </button>
+            </div>
+          </div>
+          
+          {/* Company & Report Info */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start space-x-4">
+              {/* Company Logo Placeholder */}
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md flex-shrink-0">
+                <span className="text-white font-bold text-xl">T</span>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-[#111827]">{report?.name}</h1>
+                <p className="text-sm text-[#667085] mt-0.5">{report?.description}</p>
+                <div className="flex items-center space-x-3 mt-2">
+                  <span className="inline-flex items-center text-xs text-[#667085]">
+                    <Building2 className="w-3 h-3 mr-1" />
+                    TaxCore360 Client
+                  </span>
+                  <span className="inline-flex items-center text-xs text-[#667085]">
+                    <Calendar className="w-3 h-3 mr-1" />
+                    {year} - {quarter}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
             <div className="flex items-center space-x-3">
               <div className="flex items-center space-x-2">
                 <label className="text-sm text-[#667085]">Year:</label>
                 <select 
                   value={year} 
                   onChange={(e) => setYear(e.target.value)}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                 >
                   <option>2024</option>
                   <option>2023</option>
