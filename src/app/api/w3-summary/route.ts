@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db, createAuditLog } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
 
 export async function GET(req: NextRequest) {
@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
+    const dbUser = await db.users.findUnique({ supabaseUid: user.id });
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const { searchParams } = new URL(req.url);
@@ -16,40 +16,25 @@ export async function GET(req: NextRequest) {
     const selectedYear = year ? parseInt(year) : new Date().getFullYear();
 
     // Get company information
-    const company = await prisma.company.findUnique({
-      where: { id: dbUser.companyId }
-    });
+    const company = await db.companies.findUnique({ id: dbUser.companyId });
 
     if (!company) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
-    // Get W-2 forms for the selected year
-    const w2Forms = await (prisma as any).employee.findMany({
-      where: { 
-        companyId: dbUser.companyId,
-        // Note: This would need to be connected to actual W-2 forms table
-        // For now, we'll use mock data structure
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        grossPay: true,
-        // Add other relevant fields
-      }
-    });
+    // Get employees for the selected year
+    const employees = await db.employees.findMany({ companyId: dbUser.companyId });
 
     // Calculate W-3 summary totals
     const summary = {
       taxYear: selectedYear,
-      totalEmployees: w2Forms.length,
-      totalWages: w2Forms.reduce((sum: number, emp: any) => sum + Number(emp.grossPay || 0), 0),
+      totalEmployees: employees.length,
+      totalWages: employees.reduce((sum: number, emp: any) => sum + Number(emp.grossPay || 0), 0),
       totalFederalTax: 0, // Would be calculated from actual W-2 data
-      totalSocialSecurityWages: w2Forms.reduce((sum: number, emp: any) => sum + Number(emp.grossPay || 0), 0),
-      totalSocialSecurityTax: w2Forms.reduce((sum: number, emp: any) => sum + (Number(emp.grossPay || 0) * 0.062), 0),
-      totalMedicareWages: w2Forms.reduce((sum: number, emp: any) => sum + Number(emp.grossPay || 0), 0),
-      totalMedicareTax: w2Forms.reduce((sum: number, emp: any) => sum + (Number(emp.grossPay || 0) * 0.0145), 0),
+      totalSocialSecurityWages: employees.reduce((sum: number, emp: any) => sum + Number(emp.grossPay || 0), 0),
+      totalSocialSecurityTax: employees.reduce((sum: number, emp: any) => sum + (Number(emp.grossPay || 0) * 0.062), 0),
+      totalMedicareWages: employees.reduce((sum: number, emp: any) => sum + Number(emp.grossPay || 0), 0),
+      totalMedicareTax: employees.reduce((sum: number, emp: any) => sum + (Number(emp.grossPay || 0) * 0.0145), 0),
       totalStateWages: 0,
       totalStateTax: 0,
       establishmentNumber: '001', // Would come from company settings
@@ -66,7 +51,7 @@ export async function GET(req: NextRequest) {
     };
 
     // Transform W-2 forms for display
-    const transformedW2Forms = w2Forms.map((emp: any) => ({
+    const transformedW2Forms = employees.map((emp: any) => ({
       id: emp.id,
       employeeId: emp.id,
       employeeName: `${emp.firstName} ${emp.lastName}`,
@@ -98,7 +83,7 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
+    const dbUser = await db.users.findUnique({ supabaseUid: user.id });
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const body = await req.json();
@@ -109,35 +94,25 @@ export async function POST(req: NextRequest) {
     }
 
     // Get company information
-    const company = await prisma.company.findUnique({
-      where: { id: dbUser.companyId }
-    });
+    const company = await db.companies.findUnique({ id: dbUser.companyId });
 
     if (!company) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
     // Get all employees for the tax year
-    const employees = await prisma.employee.findMany({
-      where: { companyId: dbUser.companyId },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        grossPay: true
-      }
-    });
+    const employees = await db.employees.findMany({ companyId: dbUser.companyId });
 
     // Generate W-3 summary
     const summary = {
       taxYear,
       totalEmployees: employees.length,
-      totalWages: employees.reduce((sum, emp) => sum + Number(emp.grossPay || 0), 0),
-      totalFederalTax: employees.reduce((sum, emp) => sum + (Number(emp.grossPay || 0) * 0.15), 0), // Estimated
-      totalSocialSecurityWages: employees.reduce((sum, emp) => sum + Number(emp.grossPay || 0), 0),
-      totalSocialSecurityTax: employees.reduce((sum, emp) => sum + (Number(emp.grossPay || 0) * 0.062), 0),
-      totalMedicareWages: employees.reduce((sum, emp) => sum + Number(emp.grossPay || 0), 0),
-      totalMedicareTax: employees.reduce((sum, emp) => sum + (Number(emp.grossPay || 0) * 0.0145), 0),
+      totalWages: employees.reduce((sum: number, emp: any) => sum + Number(emp.grossPay || 0), 0),
+      totalFederalTax: employees.reduce((sum: number, emp: any) => sum + (Number(emp.grossPay || 0) * 0.15), 0), // Estimated
+      totalSocialSecurityWages: employees.reduce((sum: number, emp: any) => sum + Number(emp.grossPay || 0), 0),
+      totalSocialSecurityTax: employees.reduce((sum: number, emp: any) => sum + (Number(emp.grossPay || 0) * 0.062), 0),
+      totalMedicareWages: employees.reduce((sum: number, emp: any) => sum + Number(emp.grossPay || 0), 0),
+      totalMedicareTax: employees.reduce((sum: number, emp: any) => sum + (Number(emp.grossPay || 0) * 0.0145), 0),
       totalStateWages: 0,
       totalStateTax: 0,
       establishmentNumber: '001',
@@ -155,15 +130,13 @@ export async function POST(req: NextRequest) {
     };
 
     // Log the action
-    await prisma.auditLog.create({
-      data: {
-        action: 'CREATE',
-        userId: dbUser.id,
-        entityType: 'W3_SUMMARY' as any,
-        entityId: `w3-${taxYear}`,
-        newValues: { taxYear, status: 'GENERATED' },
-        companyId: dbUser.companyId,
-      },
+    await createAuditLog({
+      action: 'CREATE',
+      userId: dbUser.id,
+      entityType: 'W3_SUMMARY',
+      entityId: `w3-${taxYear}`,
+      companyId: dbUser.companyId,
+      newValues: { taxYear, status: 'GENERATED' },
     });
 
     return NextResponse.json(summary);

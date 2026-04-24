@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db, createAuditLog } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
 
 export async function GET(req: NextRequest) {
@@ -8,22 +8,19 @@ export async function GET(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
+    const dbUser = await db.users.findUnique({ supabaseUid: user.id });
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    // Get company profile
-    const company = await prisma.company.findUnique({
-      where: { id: dbUser.companyId }
-    });
+    const company = await db.companies.findUnique({ id: dbUser.companyId });
+
+    const settings = await db.companySettings.findFirst({ companyId: dbUser.companyId });
 
     if (!company) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
-    // Get compliance settings
-    const complianceSettings = await (prisma as any).complianceSetting.findFirst({
-      where: { companyId: dbUser.companyId }
-    });
+    // Get compliance settings (not implemented in Supabase yet)
+    const complianceSettings = null;
 
     return NextResponse.json({
       company: {
@@ -68,7 +65,7 @@ export async function PATCH(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
+    const dbUser = await db.users.findUnique({ supabaseUid: user.id });
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const body = await req.json();
@@ -80,9 +77,9 @@ export async function PATCH(req: NextRequest) {
 
     switch (section) {
       case 'company':
-        const updatedCompany = await prisma.company.update({
-          where: { id: dbUser.companyId },
-          data: {
+        const updatedCompany = await db.companies.update(
+          { id: dbUser.companyId },
+          {
             ...(data.legalName && { legalName: data.legalName }),
             ...(data.dbaName !== undefined && { dbaName: data.dbaName }),
             ...(data.ein && { ein: data.ein }),
@@ -95,112 +92,65 @@ export async function PATCH(req: NextRequest) {
             ...(data.website !== undefined && { website: data.website }),
             ...(data.industry && { industry: data.industry }),
             ...(data.taxYear && { taxYear: data.taxYear }),
-            ...(data.fiscalYearEnd && { fiscalYearEnd: data.fiscalYearEnd })
+            ...(data.fiscalYearEnd && { fiscalYearEnd: data.fiscalYearEnd }),
+            updatedAt: new Date().toISOString(),
           }
-        });
+        );
 
-        await prisma.auditLog.create({
-          data: {
-            action: 'UPDATE',
-            userId: dbUser.id,
-            entityType: 'COMPANY',
-            entityId: updatedCompany.id,
-            newValues: data,
-            companyId: dbUser.companyId,
-          },
+        await createAuditLog({
+          action: 'UPDATE',
+          userId: dbUser.id,
+          entityType: 'COMPANY',
+          entityId: updatedCompany.id,
+          companyId: dbUser.companyId,
+          newValues: data,
         });
 
         return NextResponse.json(updatedCompany);
 
       case 'settings':
         // Update or create company settings
-        const settings = await (prisma as any).companySetting.upsert({
-          where: { companyId: dbUser.companyId },
-          create: {
-            companyId: dbUser.companyId,
-            emailNotifications: data.emailNotifications ?? true,
-            smsNotifications: data.smsNotifications ?? false,
-            twoFactorAuth: data.twoFactorAuth ?? false,
-            dataRetention: data.dataRetention ?? '7-years',
-            autoBackup: data.autoBackup ?? true,
-            complianceAlerts: data.complianceAlerts ?? true
-          },
-          update: {
-            ...(data.emailNotifications !== undefined && { emailNotifications: data.emailNotifications }),
-            ...(data.smsNotifications !== undefined && { smsNotifications: data.smsNotifications }),
-            ...(data.twoFactorAuth !== undefined && { twoFactorAuth: data.twoFactorAuth }),
-            ...(data.dataRetention && { dataRetention: data.dataRetention }),
-            ...(data.autoBackup !== undefined && { autoBackup: data.autoBackup }),
-            ...(data.complianceAlerts !== undefined && { complianceAlerts: data.complianceAlerts })
-          }
+        const settings = await db.companySettings.upsert({
+          companyId: dbUser.companyId,
+          ...(data.emailNotifications !== undefined && { emailNotifications: data.emailNotifications }),
+          ...(data.smsNotifications !== undefined && { smsNotifications: data.smsNotifications }),
+          ...(data.twoFactorAuth !== undefined && { twoFactorAuth: data.twoFactorAuth }),
+          ...(data.dataRetention && { dataRetention: data.dataRetention }),
+          ...(data.autoBackup !== undefined && { autoBackup: data.autoBackup }),
+          ...(data.complianceAlerts !== undefined && { complianceAlerts: data.complianceAlerts }),
         });
 
-        await prisma.auditLog.create({
-          data: {
-            action: 'UPDATE',
-            userId: dbUser.id,
-            entityType: 'SETTING',
-            entityId: settings.id,
-            newValues: data,
-            companyId: dbUser.companyId,
-          },
+        await createAuditLog({
+          action: 'UPDATE',
+          userId: dbUser.id,
+          entityType: 'SETTING',
+          entityId: settings.id,
+          companyId: dbUser.companyId,
+          newValues: data,
         });
 
         return NextResponse.json(settings);
 
       case 'compliance':
-        // Update or create compliance settings
-        const compliance = await (prisma as any).complianceSetting.upsert({
-          where: { companyId: dbUser.companyId },
-          create: {
-            companyId: dbUser.companyId,
-            federalTaxId: data.federalTaxId || '',
-            stateTaxId: data.stateTaxId || '',
-            localTaxId: data.localTaxId || '',
-            filingFrequency: data.filingFrequency || 'MONTHLY',
-            depositSchedule: data.depositSchedule || 'MONTHLY',
-            form941Schedule: data.form941Schedule || 'QUARTERLY',
-            form940Schedule: data.form940Schedule || 'ANNUALLY',
-            stateUnemploymentRate: data.stateUnemploymentRate || 0,
-            maxWageBase: data.maxWageBase || 0,
-            additionalMedicareTax: data.additionalMedicareTax || false,
-            ficaExemptWages: data.ficaExemptWages || 0,
-            retirementPlanDeductions: data.retirementPlanDeductions || 0,
-            healthSavingsAccount: data.healthSavingsAccount || false,
-            dependentCareBenefits: data.dependentCareBenefits || 0,
-            educationalAssistance: data.educationalAssistance || 0
-          },
-          update: {
-            ...(data.federalTaxId !== undefined && { federalTaxId: data.federalTaxId }),
-            ...(data.stateTaxId !== undefined && { stateTaxId: data.stateTaxId }),
-            ...(data.localTaxId !== undefined && { localTaxId: data.localTaxId }),
-            ...(data.filingFrequency && { filingFrequency: data.filingFrequency }),
-            ...(data.depositSchedule && { depositSchedule: data.depositSchedule }),
-            ...(data.form941Schedule && { form941Schedule: data.form941Schedule }),
-            ...(data.form940Schedule && { form940Schedule: data.form940Schedule }),
-            ...(data.stateUnemploymentRate !== undefined && { stateUnemploymentRate: data.stateUnemploymentRate }),
-            ...(data.maxWageBase !== undefined && { maxWageBase: data.maxWageBase }),
-            ...(data.additionalMedicareTax !== undefined && { additionalMedicareTax: data.additionalMedicareTax }),
-            ...(data.ficaExemptWages !== undefined && { ficaExemptWages: data.ficaExemptWages }),
-            ...(data.retirementPlanDeductions !== undefined && { retirementPlanDeductions: data.retirementPlanDeductions }),
-            ...(data.healthSavingsAccount !== undefined && { healthSavingsAccount: data.healthSavingsAccount }),
-            ...(data.dependentCareBenefits !== undefined && { dependentCareBenefits: data.dependentCareBenefits }),
-            ...(data.educationalAssistance !== undefined && { educationalAssistance: data.educationalAssistance })
-          }
+        // Compliance settings are stored in company_settings table
+        const complianceSettings = await db.companySettings.upsert({
+          companyId: dbUser.companyId,
+          ...(data.filingFrequency && { depositSchedule: data.filingFrequency }),
+          ...(data.depositSchedule && { payPeriodType: data.depositSchedule }),
+          ...(data.necThreshold !== undefined && { necThreshold: data.necThreshold }),
+          ...(data.miscThreshold !== undefined && { miscThreshold: data.miscThreshold }),
         });
 
-        await prisma.auditLog.create({
-          data: {
-            action: 'UPDATE',
-            userId: dbUser.id,
-            entityType: 'COMPANY',
-            entityId: compliance.id,
-            newValues: data,
-            companyId: dbUser.companyId,
-          },
+        await createAuditLog({
+          action: 'UPDATE',
+          userId: dbUser.id,
+          entityType: 'SETTING',
+          entityId: complianceSettings.id,
+          companyId: dbUser.companyId,
+          newValues: data,
         });
 
-        return NextResponse.json(compliance);
+        return NextResponse.json({ success: true, complianceSettings });
 
       default:
         return NextResponse.json({ error: 'Invalid section' }, { status: 400 });

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db, createAuditLog } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
-import { createAuditLog } from '@/lib/prisma';
 
 // Local TIN utilities (no external IRS API)
 function maskTIN(tin: string): string {
@@ -54,21 +53,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Get vendor with company verification
-    const user = await prisma.user.findFirst({
-      where: { email: authUser.email },
-      include: { company: true }
-    });
+    const user = await db.users.findFirst({ email: authUser.email || '' });
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const vendor = await prisma.vendor.findFirst({
-      where: {
-        id: vendorId,
-        companyId: user.companyId
-      }
-    });
+    const vendor = await db.vendors.findFirst({ id: vendorId, companyId: user.companyId });
 
     if (!vendor) {
       return NextResponse.json({ error: 'Vendor not found' }, { status: 404 });
@@ -81,13 +72,10 @@ export async function POST(req: NextRequest) {
     });
 
     // Update vendor record
-    await prisma.vendor.update({
-      where: { id: vendorId },
-      data: {
-        tinVerified: result.match,
-        tinVerifiedAt: new Date(),
-        tinMatchName: result.match ? vendor.legalName : null
-      }
+    await db.vendors.update(vendorId, {
+      tinVerified: result.match,
+      tinVerifiedAt: new Date().toISOString(),
+      tinMatchName: result.match ? vendor.legalName : null
     });
 
     // Create audit log
@@ -135,25 +123,15 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findFirst({
-      where: { email: authUser.email },
-      include: { company: true }
-    });
+    const user = await db.users.findFirst({ email: authUser.email || '' });
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Get all unverified vendors
-    const vendors = await prisma.vendor.findMany({
-      where: {
-        companyId: user.companyId,
-        OR: [
-          { tinVerified: { equals: false } },
-          { tinVerified: { not: true } }
-        ]
-      }
-    });
+    const allVendors = await db.vendors.findMany({ companyId: user.companyId });
+    const vendors = allVendors.filter(v => v.tinVerified !== true);
 
     if (vendors.length === 0) {
       return NextResponse.json({
@@ -184,13 +162,10 @@ export async function PUT(req: NextRequest) {
         name: vendor.legalName
       });
       
-      await prisma.vendor.update({
-        where: { id: vendor.id },
-        data: {
-          tinVerified: result.match,
-          tinVerifiedAt: new Date(),
-          tinMatchName: result.match ? vendor.legalName : null
-        }
+      await db.vendors.update(vendor.id, {
+        tinVerified: result.match,
+        tinVerifiedAt: new Date().toISOString(),
+        tinMatchName: result.match ? vendor.legalName : null
       });
       
       if (result.match) results.matched++;
@@ -242,29 +217,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findFirst({
-      where: { email: authUser.email },
-      include: { company: true }
-    });
+    const user = await db.users.findFirst({ email: authUser.email || '' });
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Get statistics
-    const stats = await prisma.vendor.groupBy({
-      by: ['tinVerified'],
-      where: {
-        companyId: user.companyId
-      },
-      _count: {
-        id: true
-      }
-    });
+    const stats = await db.vendors.groupBy('tinVerified', { companyId: user.companyId });
 
-    const verified = stats.find((s: { tinVerified: boolean | null; _count: { id: number } }) => s.tinVerified === true)?._count.id || 0;
-    const unverified = stats.find((s: { tinVerified: boolean | null; _count: { id: number } }) => s.tinVerified === null)?._count.id || 0;
-    const mismatched = stats.find((s: { tinVerified: boolean | null; _count: { id: number } }) => s.tinVerified === false)?._count.id || 0;
+    const verified = stats.find((s: any) => s.tinVerified === true)?._count.id || 0;
+    const unverified = stats.find((s: any) => s.tinVerified === null)?._count.id || 0;
+    const mismatched = stats.find((s: any) => s.tinVerified === false)?._count.id || 0;
     const total = verified + unverified + mismatched;
 
     return NextResponse.json({

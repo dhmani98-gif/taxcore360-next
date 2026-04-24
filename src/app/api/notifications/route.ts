@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db, createAuditLog } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
-import { createAuditLog } from '@/lib/prisma';
 
 /**
  * GET /api/notifications
@@ -16,9 +15,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findFirst({
-      where: { email: authUser.email }
-    });
+    const user = await db.users.findFirst({ email: authUser.email || '' });
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -28,22 +25,12 @@ export async function GET(req: NextRequest) {
     const unreadOnly = searchParams.get('unread') === 'true';
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const notifications = await prisma.notification.findMany({
-      where: {
-        userId: user.id,
-        ...(unreadOnly ? { read: false } : {})
-      },
-      orderBy: { createdAt: 'desc' },
-      take: limit
-    });
+    const notifications = await db.notifications.findMany(
+      { userId: user.id, ...(unreadOnly ? { read: false } : {}) },
+      { orderBy: { createdAt: 'desc' }, take: limit }
+    );
 
-    // Get unread count
-    const unreadCount = await prisma.notification.count({
-      where: {
-        userId: user.id,
-        read: false
-      }
-    });
+    const unreadCount = await db.notifications.count({ userId: user.id, read: false });
 
     return NextResponse.json({
       notifications,
@@ -72,10 +59,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findFirst({
-      where: { email: authUser.email },
-      include: { company: true }
-    });
+    const user = await db.users.findFirst({ email: authUser.email || '' });
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -84,21 +68,18 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { type, channel, title, message, data: notificationData } = body;
 
-    // Create notification
-    const notification = await prisma.notification.create({
-      data: {
-        type: type || 'EMAIL',
-        channel: channel || 'SYSTEM',
-        title,
-        message,
-        data: notificationData || {},
-        userId: user.id
-      }
+    const notification = await db.notifications.create({
+      type: type || 'EMAIL',
+      channel: channel || 'SYSTEM',
+      title,
+      message,
+      data: notificationData || {},
+      userId: user.id,
+      read: false,
+      priority: 'NORMAL',
+      createdAt: new Date().toISOString(),
     });
 
-    // Note: Email notifications require external email service (Resend)
-    // To enable, configure RESEND_API_KEY in environment variables
-    
     // Create audit log
     await createAuditLog({
       action: 'CREATE',
@@ -137,9 +118,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findFirst({
-      where: { email: authUser.email }
-    });
+    const user = await db.users.findFirst({ email: authUser.email || '' });
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -149,17 +128,10 @@ export async function PUT(req: NextRequest) {
     const { notificationId, readAll } = body;
 
     if (readAll) {
-      // Mark all as read
-      await prisma.notification.updateMany({
-        where: {
-          userId: user.id,
-          read: false
-        },
-        data: {
-          read: true,
-          readAt: new Date()
-        }
-      });
+      await db.notifications.updateMany(
+        { userId: user.id, read: false },
+        { read: true, readAt: new Date().toISOString() }
+      );
 
       return NextResponse.json({ success: true, message: 'All notifications marked as read' });
     }
@@ -168,16 +140,9 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Notification ID required' }, { status: 400 });
     }
 
-    // Mark single notification as read
-    const notification = await prisma.notification.update({
-      where: {
-        id: notificationId,
-        userId: user.id
-      },
-      data: {
-        read: true,
-        readAt: new Date()
-      }
+    const notification = await db.notifications.update(notificationId, {
+      read: true,
+      readAt: new Date().toISOString()
     });
 
     return NextResponse.json({ notification });
@@ -204,9 +169,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findFirst({
-      where: { email: authUser.email }
-    });
+    const user = await db.users.findFirst({ email: authUser.email || '' });
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -219,12 +182,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Notification ID required' }, { status: 400 });
     }
 
-    await prisma.notification.delete({
-      where: {
-        id: notificationId,
-        userId: user.id
-      }
-    });
+    await db.notifications.delete({ id: notificationId });
 
     return NextResponse.json({ success: true });
 

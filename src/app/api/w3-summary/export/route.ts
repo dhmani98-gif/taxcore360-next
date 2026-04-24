@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db, createAuditLog } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
+    const dbUser = await db.users.findUnique({ supabaseUid: user.id });
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const body = await req.json();
@@ -19,24 +19,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Get company information
-    const company = await prisma.company.findUnique({
-      where: { id: dbUser.companyId }
-    });
+    const company = await db.companies.findUnique({ id: dbUser.companyId });
 
     if (!company) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
     // Get employees for the tax year
-    const employees = await prisma.employee.findMany({
-      where: { companyId: dbUser.companyId },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        grossPay: true
-      }
-    });
+    const employees = await db.employees.findMany({ companyId: dbUser.companyId });
 
     // Generate W-3 PDF content (simplified version)
     const pdfContent = generateW3PDF({
@@ -44,22 +34,20 @@ export async function POST(req: NextRequest) {
       company,
       employees,
       totalEmployees: employees.length,
-      totalWages: employees.reduce((sum, emp) => sum + Number(emp.grossPay || 0), 0)
+      totalWages: employees.reduce((sum: number, emp: any) => sum + Number(emp.grossPay || 0), 0)
     });
 
     // Create PDF buffer
     const pdfBuffer = Buffer.from(pdfContent, 'utf-8');
 
     // Log the export action
-    await prisma.auditLog.create({
-      data: {
-        action: 'EXPORT',
-        userId: dbUser.id,
-        entityType: 'W3_SUMMARY' as any,
-        entityId: `w3-${taxYear}`,
-        newValues: { taxYear, exportedAt: new Date().toISOString() },
-        companyId: dbUser.companyId,
-      },
+    await createAuditLog({
+      action: 'EXPORT',
+      userId: dbUser.id,
+      entityType: 'W3_SUMMARY',
+      entityId: `w3-${taxYear}`,
+      companyId: dbUser.companyId,
+      newValues: { taxYear, exportedAt: new Date().toISOString() },
     });
 
     return new NextResponse(pdfBuffer, {

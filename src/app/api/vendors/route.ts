@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db, createAuditLog } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
 import crypto from 'crypto';
 
@@ -40,25 +40,21 @@ export async function GET(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
+    const dbUser = await db.users.findUnique({ supabaseUid: user.id });
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const { searchParams } = new URL(req.url);
     const tinVerified = searchParams.get('tinVerified');
 
-    const vendors = await prisma.vendor.findMany({
-      where: {
-        companyId: dbUser.companyId,
-        ...(tinVerified !== null && { tinVerified: tinVerified === 'true' }),
-      },
-      include: {
-        payments: {
-          orderBy: { paymentDate: 'desc' },
-          take: 10,
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    let vendors = await db.vendors.findMany({ companyId: dbUser.companyId });
+    
+    // Filter by tinVerified if provided
+    if (tinVerified !== null) {
+      vendors = vendors.filter(v => v.tinVerified === (tinVerified === 'true'));
+    }
+    
+    // Sort by createdAt desc
+    vendors = vendors.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return NextResponse.json(vendors);
   } catch (error) {
@@ -72,48 +68,48 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
+    const dbUser = await db.users.findUnique({ supabaseUid: user.id });
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const body = await req.json();
-    const vendor = await prisma.vendor.create({
-      data: {
-        vendorId: String(body.vendorId ?? '').trim(),
-        legalName: String(body.legalName ?? '').trim(),
-        email: body.email ? String(body.email).trim() : null,
-        phone: body.phone ? String(body.phone).trim() : null,
+    const vendor = await db.vendors.create({
+      vendorId: String(body.vendorId ?? '').trim(),
+      legalName: String(body.legalName ?? '').trim(),
+      email: body.email ? String(body.email).trim() : null,
+      phone: body.phone ? String(body.phone).trim() : null,
 
-        address: String(body.address ?? '').trim(),
-        address2: body.address2 ? String(body.address2).trim() : null,
-        city: body.city ? String(body.city).trim() : null,
-        state: String(body.state ?? '').trim(),
-        zipCode: body.zipCode ? String(body.zipCode).trim() : null,
+      address: String(body.address ?? '').trim(),
+      address2: body.address2 ? String(body.address2).trim() : null,
+      city: body.city ? String(body.city).trim() : null,
+      state: String(body.state ?? '').trim(),
+      zipCode: body.zipCode ? String(body.zipCode).trim() : null,
 
-        taxIdType: body.taxIdType,
-        taxId: String(body.taxId ?? '').trim(),
-        taxIdHash: sha256(String(body.taxId ?? '').trim()),
+      taxIdType: body.taxIdType,
+      taxId: String(body.taxId ?? '').trim(),
+      taxIdHash: sha256(String(body.taxId ?? '').trim()),
 
-        entityType: normalizeEntityType(body.entityType),
+      entityType: normalizeEntityType(body.entityType),
 
-        w9Requested: Boolean(body.w9Requested ?? false),
-        w9RequestedAt: body.w9RequestedAt ? new Date(body.w9RequestedAt) : null,
-        w9Received: Boolean(body.w9Received ?? false),
-        w9ReceivedAt: body.w9ReceivedAt ? new Date(body.w9ReceivedAt) : null,
-        w9FileUrl: body.w9FileUrl ? String(body.w9FileUrl) : null,
+      w9Requested: Boolean(body.w9Requested ?? false),
+      w9RequestedAt: body.w9RequestedAt ? new Date(body.w9RequestedAt).toISOString() : null,
+      w9Received: Boolean(body.w9Received ?? false),
+      w9ReceivedAt: body.w9ReceivedAt ? new Date(body.w9ReceivedAt).toISOString() : null,
+      w9FileUrl: body.w9FileUrl ? String(body.w9FileUrl) : null,
+      
+      tinVerified: false,
+      tinVerifiedAt: null,
+      tinMatchName: null,
 
-        companyId: dbUser.companyId,
-      },
+      companyId: dbUser.companyId,
     });
 
-    await prisma.auditLog.create({
-      data: {
-        action: 'CREATE',
-        userId: dbUser.id,
-        entityType: 'VENDOR',
-        entityId: vendor.id,
-        newValues: body,
-        companyId: dbUser.companyId,
-      },
+    await createAuditLog({
+      action: 'CREATE',
+      userId: dbUser.id,
+      entityType: 'VENDOR',
+      entityId: vendor.id,
+      companyId: dbUser.companyId,
+      newValues: body,
     });
 
     return NextResponse.json(vendor, { status: 201 });
@@ -128,38 +124,32 @@ export async function PATCH(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
+    const dbUser = await db.users.findUnique({ supabaseUid: user.id });
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const body = await req.json();
     const id = String(body.id ?? '').trim();
     if (!id) return NextResponse.json({ error: 'Vendor id required' }, { status: 400 });
 
-    const vendor = await prisma.vendor.findFirst({
-      where: { id, companyId: dbUser.companyId },
-    });
+    const vendor = await db.vendors.findFirst({ id, companyId: dbUser.companyId });
     if (!vendor) return NextResponse.json({ error: 'Vendor not found' }, { status: 404 });
 
-    const updated = await prisma.vendor.update({
-      where: { id },
-      data: {
-        w9Requested: body.w9Requested ?? undefined,
-        w9RequestedAt: body.w9RequestedAt ? new Date(body.w9RequestedAt) : undefined,
-        w9Received: body.w9Received ?? undefined,
-        w9ReceivedAt: body.w9ReceivedAt ? new Date(body.w9ReceivedAt) : undefined,
-        w9FileUrl: body.w9FileUrl ?? undefined,
-      },
-    });
+    const updateData: any = {};
+    if (body.w9Requested !== undefined) updateData.w9Requested = body.w9Requested;
+    if (body.w9RequestedAt !== undefined) updateData.w9RequestedAt = body.w9RequestedAt ? new Date(body.w9RequestedAt).toISOString() : null;
+    if (body.w9Received !== undefined) updateData.w9Received = body.w9Received;
+    if (body.w9ReceivedAt !== undefined) updateData.w9ReceivedAt = body.w9ReceivedAt ? new Date(body.w9ReceivedAt).toISOString() : null;
+    if (body.w9FileUrl !== undefined) updateData.w9FileUrl = body.w9FileUrl;
 
-    await prisma.auditLog.create({
-      data: {
-        action: 'UPDATE',
-        userId: dbUser.id,
-        entityType: 'VENDOR',
-        entityId: updated.id,
-        newValues: body,
-        companyId: dbUser.companyId,
-      },
+    const updated = await db.vendors.update(id, updateData);
+
+    await createAuditLog({
+      action: 'UPDATE',
+      userId: dbUser.id,
+      entityType: 'VENDOR',
+      entityId: updated.id,
+      companyId: dbUser.companyId,
+      newValues: body,
     });
 
     return NextResponse.json(updated);

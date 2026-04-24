@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { supabaseAdmin, createAuditLog } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
 
 export async function GET(req: NextRequest) {
@@ -8,28 +8,29 @@ export async function GET(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
+    const supabase = await createClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Get user info from Supabase
+    const { data: dbUser } = await supabaseAdmin
+      .from('users')
+      .select('companyId')
+      .eq('supabaseUid', authUser.id)
+      .single();
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const { searchParams } = new URL(req.url);
     const category = searchParams.get('category');
-    const year = searchParams.get('year');
 
-    const documents = await (prisma as any).vaultDocument.findMany({
-      where: {
-        companyId: dbUser.companyId,
-        ...(category && { category: category as any }),
-        ...(year && { documentYear: year }),
-      },
-      include: {
-        vendor: {
-          select: { vendorId: true, legalName: true, email: true },
-        },
-      },
-      orderBy: { uploadedAt: 'desc' },
-    });
+    // Query vault documents from Supabase
+    let query = supabaseAdmin.from('vault_documents').select('*').eq('company_id', dbUser.companyId);
+    if (category) query = query.eq('category', category);
+    
+    const { data: documents, error } = await query.order('created_at', { ascending: false });
+    if (error) throw error;
 
-    return NextResponse.json(documents);
+    return NextResponse.json(documents || []);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch vault documents' }, { status: 500 });
   }
@@ -41,7 +42,15 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
+    const supabase = await createClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { data: dbUser } = await supabaseAdmin
+      .from('users')
+      .select('id, companyId')
+      .eq('supabaseUid', authUser.id)
+      .single();
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const body = await req.json();
@@ -56,39 +65,35 @@ export async function POST(req: NextRequest) {
       fileType,
     } = body;
 
-    if (!documentName || !category || !documentYear || !fileUrl) {
+    if (!documentName || !category || !fileUrl) {
       return NextResponse.json({ error: 'Required fields missing' }, { status: 400 });
     }
 
-    const document = await (prisma as any).vaultDocument.create({
-      data: {
-        documentName,
-        category: category as any,
-        documentYear,
-        vendorId: vendorId ?? null,
+    const { data: document, error } = await supabaseAdmin
+      .from('vault_documents')
+      .insert({
+        document_name: documentName,
+        category: category,
+        document_year: documentYear,
+        vendor_id: vendorId ?? null,
         description: description ?? null,
-        fileUrl,
-        fileSize: fileSize ?? null,
-        fileType: fileType ?? null,
-        uploadedAt: new Date(),
-        companyId: dbUser.companyId,
-      },
-      include: {
-        vendor: {
-          select: { vendorId: true, legalName: true, email: true },
-        },
-      },
-    });
+        file_url: fileUrl,
+        file_size: fileSize ?? null,
+        file_type: fileType ?? null,
+        company_id: dbUser.companyId,
+      })
+      .select()
+      .single();
 
-    await prisma.auditLog.create({
-      data: {
-        action: 'CREATE',
-        userId: dbUser.id,
-        entityType: 'ATTACHMENT',
-        entityId: document.id,
-        newValues: { documentName, category, documentYear, vendorId },
-        companyId: dbUser.companyId,
-      },
+    if (error) throw error;
+
+    await createAuditLog({
+      action: 'CREATE',
+      userId: dbUser.id,
+      entityType: 'ATTACHMENT',
+      entityId: document.id,
+      companyId: dbUser.companyId,
+      newValues: { documentName, category, documentYear, vendorId },
     });
 
     return NextResponse.json(document, { status: 201 });
@@ -103,7 +108,15 @@ export async function PATCH(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
+    const supabase = await createClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { data: dbUser } = await supabaseAdmin
+      .from('users')
+      .select('id, companyId')
+      .eq('supabaseUid', authUser.id)
+      .single();
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const body = await req.json();
@@ -113,38 +126,30 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Document ID required' }, { status: 400 });
     }
 
-    const document = await (prisma as any).vaultDocument.findFirst({
-      where: { id, companyId: dbUser.companyId },
-    });
-    if (!document) {
-      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
-    }
+    const updateData: any = {};
+    if (documentName) updateData.document_name = documentName;
+    if (category) updateData.category = category;
+    if (documentYear) updateData.document_year = documentYear;
+    if (vendorId !== undefined) updateData.vendor_id = vendorId;
+    if (description !== undefined) updateData.description = description;
 
-    const updated = await (prisma as any).vaultDocument.update({
-      where: { id },
-      data: {
-        ...(documentName && { documentName }),
-        ...(category && { category: category as any }),
-        ...(documentYear && { documentYear }),
-        ...(vendorId !== undefined && { vendorId: vendorId ?? null }),
-        ...(description !== undefined && { description: description ?? null }),
-      },
-      include: {
-        vendor: {
-          select: { vendorId: true, legalName: true, email: true },
-        },
-      },
-    });
+    const { data: updated, error } = await supabaseAdmin
+      .from('vault_documents')
+      .update(updateData)
+      .eq('id', id)
+      .eq('company_id', dbUser.companyId)
+      .select()
+      .single();
 
-    await prisma.auditLog.create({
-      data: {
-        action: 'UPDATE',
-        userId: dbUser.id,
-        entityType: 'ATTACHMENT',
-        entityId: updated.id,
-        newValues: { documentName, category, documentYear, vendorId, description },
-        companyId: dbUser.companyId,
-      },
+    if (error) throw error;
+
+    await createAuditLog({
+      action: 'UPDATE',
+      userId: dbUser.id,
+      entityType: 'ATTACHMENT',
+      entityId: updated.id,
+      companyId: dbUser.companyId,
+      newValues: { documentName, category, documentYear, vendorId, description },
     });
 
     return NextResponse.json(updated);
@@ -159,7 +164,15 @@ export async function DELETE(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
+    const supabase = await createClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { data: dbUser } = await supabaseAdmin
+      .from('users')
+      .select('id, companyId')
+      .eq('supabaseUid', authUser.id)
+      .single();
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const { searchParams } = new URL(req.url);
@@ -169,24 +182,26 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Document ID required' }, { status: 400 });
     }
 
-    const document = await (prisma as any).vaultDocument.findFirst({
-      where: { id, companyId: dbUser.companyId },
-    });
+    const { data: document } = await supabaseAdmin
+      .from('vault_documents')
+      .select('document_name')
+      .eq('id', id)
+      .eq('company_id', dbUser.companyId)
+      .single();
+
     if (!document) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
 
-    await (prisma as any).vaultDocument.delete({ where: { id } });
+    await supabaseAdmin.from('vault_documents').delete().eq('id', id);
 
-    await prisma.auditLog.create({
-      data: {
-        action: 'DELETE',
-        userId: dbUser.id,
-        entityType: 'ATTACHMENT',
-        entityId: id,
-        oldValues: { documentName: document.documentName },
-        companyId: dbUser.companyId,
-      },
+    await createAuditLog({
+      action: 'DELETE',
+      userId: dbUser.id,
+      entityType: 'ATTACHMENT',
+      entityId: id,
+      companyId: dbUser.companyId,
+      oldValues: { documentName: document.document_name },
     });
 
     return NextResponse.json({ message: 'Document deleted successfully' });

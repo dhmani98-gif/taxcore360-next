@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { supabaseAdmin, createAuditLog } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
 
 export async function GET(req: NextRequest) {
@@ -14,34 +14,14 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const approvalStatus = searchParams.get('approvalStatus');
 
-    const submissions = await (prisma as any).w9Submission.findMany({
-      where: {
-        companyId: dbUser.companyId,
-        ...(approvalStatus && { approvalStatus: approvalStatus as any }),
-      },
-      include: {
-        invite: {
-          select: {
-            id: true,
-            token: true,
-            status: true,
-            createdAt: true,
-            vendorId: true,
-            vendorEmail: true,
-          },
-        },
-        vendor: {
-          select: {
-            vendorId: true,
-            legalName: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: { submittedAt: 'desc' },
-    });
+    // Query W9 submissions from Supabase
+    let query = supabaseAdmin.from('w9_submissions').select('*').eq('company_id', dbUser.companyId);
+    if (approvalStatus) query = query.eq('approval_status', approvalStatus);
+    
+    const { data: submissions, error } = await query.order('submitted_at', { ascending: false });
+    if (error) throw error;
 
-    return NextResponse.json(submissions);
+    return NextResponse.json(submissions || []);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch W-9 submissions' }, { status: 500 });
   }
@@ -75,53 +55,55 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Required fields missing' }, { status: 400 });
     }
 
-    // Verify invite exists and belongs to this company
-    const invite = await (prisma as any).w9Invite.findFirst({
-      where: { id: inviteId, companyId: dbUser.companyId },
-    });
-    if (!invite) {
+    // Verify invite exists
+    const { data: invite, error: inviteError } = await supabaseAdmin
+      .from('w9_invites')
+      .select('vendor_id')
+      .eq('id', inviteId)
+      .eq('company_id', dbUser.companyId)
+      .single();
+    
+    if (inviteError || !invite) {
       return NextResponse.json({ error: 'Invalid invite' }, { status: 404 });
     }
 
-    const submission = await (prisma as any).w9Submission.create({
-      data: {
-        approvalStatus: 'PENDING',
-        legalName,
+    const { data: submission, error } = await supabaseAdmin
+      .from('w9_submissions')
+      .insert({
+        approval_status: 'PENDING',
+        legal_name: legalName,
         email: email ?? null,
         address: address ?? null,
         state: state ?? null,
-        taxIdType,
-        taxId,
-        entityType,
-        eSigned: Boolean(eSigned),
-        signatureName: signatureName ?? null,
-        signatureDate: signatureDate ? new Date(signatureDate) : null,
-        submittedAt: new Date(),
-        companyId: dbUser.companyId,
-        vendorId: invite.vendorId,
-        inviteId,
-      },
-      include: {
-        vendor: { select: { vendorId: true, legalName: true, email: true } },
-        invite: { select: { token: true, status: true } },
-      },
-    });
+        tax_id_type: taxIdType,
+        tax_id: taxId,
+        entity_type: entityType,
+        e_signed: Boolean(eSigned),
+        signature_name: signatureName ?? null,
+        signature_date: signatureDate ? new Date(signatureDate).toISOString() : null,
+        submitted_at: new Date().toISOString(),
+        company_id: dbUser.companyId,
+        vendor_id: invite.vendor_id,
+        invite_id: inviteId,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
 
     // Update invite status
-    await (prisma as any).w9Invite.update({
-      where: { id: inviteId },
-      data: { status: 'COMPLETED', completedAt: new Date() },
-    });
+    await supabaseAdmin
+      .from('w9_invites')
+      .update({ status: 'COMPLETED', completed_at: new Date().toISOString() })
+      .eq('id', inviteId);
 
-    await prisma.auditLog.create({
-      data: {
-        action: 'CREATE',
-        userId: dbUser.id,
-        entityType: 'VENDOR',
-        entityId: submission.id,
-        newValues: { inviteId, legalName, email, taxIdType, entityType },
-        companyId: dbUser.companyId,
-      },
+    await createAuditLog({
+      action: 'CREATE',
+      userId: dbUser.id,
+      entityType: 'VENDOR',
+      entityId: submission.id,
+      companyId: dbUser.companyId,
+      newValues: { inviteId, legalName, email, taxIdType, entityType },
     });
 
     return NextResponse.json(submission, { status: 201 });

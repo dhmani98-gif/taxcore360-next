@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db, supabaseAdmin } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
 
 export async function GET(req: NextRequest) {
@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
+    const dbUser = await db.users.findUnique({ supabaseUid: user.id });
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const { searchParams } = new URL(req.url);
@@ -23,33 +23,26 @@ export async function GET(req: NextRequest) {
       vendors,
       payments,
       employees,
-      w9Submissions,
-      vaultDocuments
+      w9SubmissionsRes,
+      vaultDocumentsRes
     ] = await Promise.all([
-      prisma.vendor.findMany({
-        where: { companyId: dbUser.companyId },
-        select: { vendorId: true, legalName: true, email: true, phone: true, entityType: true, taxIdHash: true, createdAt: true }
-      }),
-      prisma.payment.findMany({
-        where: { 
-          companyId: dbUser.companyId,
-          paymentDate: { gte: new Date(`${selectedYear}-01-01`), lt: new Date(`${parseInt(selectedYear) + 1}-01-01`) }
-        },
-        include: { vendor: { select: { legalName: true, entityType: true } } }
-      }),
-      (prisma as any).employee.findMany({
-        where: { companyId: dbUser.companyId },
-        select: { id: true, firstName: true, lastName: true, role: true, department: true, hireDate: true, grossPay: true }
-      }),
-      (prisma as any).w9Submission.findMany({
-        where: { companyId: dbUser.companyId },
-        include: { vendor: { select: { legalName: true } } }
-      }),
-      (prisma as any).vaultDocument.findMany({
-        where: { companyId: dbUser.companyId },
-        select: { documentName: true, category: true, documentYear: true, uploadedAt: true }
-      })
+      db.vendors.findMany({ companyId: dbUser.companyId }),
+      db.payments.findMany({ companyId: dbUser.companyId }),
+      db.employees.findMany({ companyId: dbUser.companyId }),
+      supabaseAdmin.from('w9_submissions').select('*').eq('company_id', dbUser.companyId),
+      supabaseAdmin.from('vault_documents').select('*').eq('company_id', dbUser.companyId)
     ]);
+
+    // Filter payments by year if provided
+    const yearStart = new Date(`${selectedYear}-01-01`).toISOString();
+    const yearEnd = new Date(`${parseInt(selectedYear) + 1}-01-01`).toISOString();
+    const filteredPayments = payments.filter(p => {
+      const paymentDate = new Date(p.paymentDate).toISOString();
+      return paymentDate >= yearStart && paymentDate < yearEnd;
+    });
+
+    const w9Submissions = w9SubmissionsRes.data || [];
+    const vaultDocuments = vaultDocumentsRes.data || [];
 
     // Generate reports based on type
     switch (reportType) {
