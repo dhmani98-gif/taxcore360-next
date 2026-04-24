@@ -22,21 +22,21 @@ export default function DashboardLayout({
   banner 
 }: DashboardLayoutProps) {
   return (
-    <div className="min-h-screen bg-slate-950 flex">
-      {/* Sidebar - Fixed width */}
+    <div className="min-h-screen bg-[#f8fafc] flex">
+      {/* Sidebar - Fixed width with dark navy */}
       <div className="w-[280px] flex-shrink-0">
         <Sidebar />
       </div>
       
-      {/* Main Content - Takes remaining space */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <header className="bg-slate-900 border-b border-slate-800 px-6 py-4">
+      {/* Main Content - White/Light Gray Background */}
+      <div className="flex-1 flex flex-col min-w-0 bg-white">
+        {/* Header - White with subtle border */}
+        <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-white">{title}</h1>
+              <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
               {description && (
-                <p className="text-slate-400 text-sm mt-1">{description}</p>
+                <p className="text-gray-500 text-sm mt-1">{description}</p>
               )}
               {badges.length > 0 && (
                 <div className="flex items-center space-x-2 mt-2">
@@ -55,8 +55,8 @@ export default function DashboardLayout({
             {/* Company Info */}
             <div className="flex items-center space-x-4">
               <div className="text-right">
-                <p className="text-white text-sm font-medium">Acme Corporation</p>
-                <p className="text-slate-400 text-xs">Professional Plan</p>
+                <p className="text-gray-900 text-sm font-medium">Acme Corporation</p>
+                <p className="text-gray-500 text-xs">Professional Plan</p>
               </div>
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
                 <span className="text-white text-sm font-bold">AC</span>
@@ -67,18 +67,18 @@ export default function DashboardLayout({
           {/* Banner */}
           {banner && (
             <div className={`mt-4 p-3 rounded-lg flex items-center space-x-3 ${
-              banner.type === 'success' ? 'bg-gradient-to-r from-emerald-500/20 to-green-500/30 border border-emerald-400/40 text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.15)]' :
-              banner.type === 'warning' ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/30 border border-amber-400/40 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.15)]' :
-              banner.type === 'error' ? 'bg-gradient-to-r from-rose-500/20 to-red-500/30 border border-rose-400/40 text-rose-300 shadow-[0_0_20px_rgba(244,63,94,0.15)]' :
-              'bg-gradient-to-r from-blue-500/20 to-cyan-500/30 border border-blue-400/40 text-cyan-200 shadow-[0_0_20px_rgba(59,130,246,0.15)]'
+              banner.type === 'success' ? 'bg-gradient-to-r from-emerald-50 to-green-100 border border-emerald-200 text-emerald-800' :
+              banner.type === 'warning' ? 'bg-gradient-to-r from-amber-50 to-yellow-100 border border-amber-200 text-amber-800' :
+              banner.type === 'error' ? 'bg-gradient-to-r from-rose-50 to-red-100 border border-rose-200 text-rose-800' :
+              'bg-gradient-to-r from-blue-50 to-cyan-100 border border-blue-200 text-blue-800'
             }`}>
               <span className="text-sm font-medium">{banner.message}</span>
             </div>
           )}
         </header>
         
-        {/* Page Content */}
-        <main className="flex-1 p-6 overflow-auto">
+        {/* Page Content - Light Gray Subtle Background */}
+        <main className="flex-1 p-6 overflow-auto bg-[#f8fafc]">
           {children}
         </main>
       </div>
