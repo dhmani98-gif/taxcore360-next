@@ -61,21 +61,21 @@ create table if not exists public.users (
   name text not null,
   role text default 'USER',
   supabaseUid text unique,
-  companyId text,
+  company_id text,
   isActive boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create index if not exists users_supabaseUid_idx on public.users(supabaseUid);
-create index if not exists users_companyId_idx on public.users(companyId);
+create index if not exists users_company_id_idx on public.users(company_id);
 
 alter table public.users
-  drop constraint if exists users_companyId_fkey;
+  drop constraint if exists users_company_id_fkey;
 
 alter table public.users
-  add constraint users_companyId_fkey
-  foreign key (companyId)
+  add constraint users_company_id_fkey
+  foreign key (company_id)
   references public.companies(id)
   on delete cascade;
 
