@@ -27,7 +27,59 @@ interface User {
 
 export default function SubscriptionsPage() {
   const [selectedTab, setSelectedTab] = useState<'plans' | 'users'>('plans');
-  const [plans, setPlans] = useState<Plan[]>([]);
+  // Define the three pricing plans
+  const defaultPlans: Plan[] = [
+    {
+      id: 'starter',
+      name: 'Starter',
+      price: 29,
+      interval: 'monthly',
+      features: [
+        'Limited W-9 & 1099 forms (50/month)',
+        'Basic tax reports',
+        'Email support',
+        'Single user access',
+        'Standard data export'
+      ],
+      icon: <Star className="w-5 h-5" />
+    },
+    {
+      id: 'professional',
+      name: 'Professional',
+      price: 99,
+      interval: 'monthly',
+      features: [
+        'Unlimited W-9 & 1099 forms',
+        'QuickBooks & Xero integration',
+        'Priority email & chat support',
+        'Up to 5 team members',
+        'Advanced analytics dashboard',
+        'API access',
+        'Bulk form generation'
+      ],
+      popular: true,
+      icon: <Zap className="w-5 h-5" />
+    },
+    {
+      id: 'enterprise',
+      name: 'Enterprise',
+      price: 249,
+      interval: 'monthly',
+      features: [
+        'Multi-company management',
+        'Full W-2 & W-3 support',
+        'Dedicated account manager',
+        'Unlimited team members',
+        'Custom report templates',
+        'White-label options',
+        'SLA guarantee',
+        'On-premise deployment option'
+      ],
+      icon: <Crown className="w-5 h-5" />
+    }
+  ];
+
+  const [plans, setPlans] = useState<Plan[]>(defaultPlans);
   const [users, setUsers] = useState<User[]>([]);
   const [companySubscription, setCompanySubscription] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -164,11 +216,11 @@ export default function SubscriptionsPage() {
 
   const getStatusBadge = (status: string) => {
     return status === 'Active' ? (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400">
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
         Active
       </span>
     ) : (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/20 text-red-400">
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
         Inactive
       </span>
     );
@@ -183,22 +235,22 @@ export default function SubscriptionsPage() {
       {message && (
         <div className={`mb-6 p-4 rounded-lg ${
           message.includes('successfully') 
-            ? 'bg-green-500/20 border border-green-500/30 text-green-200' 
-            : 'bg-blue-500/20 border border-blue-500/30 text-blue-200'
+            ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' 
+            : 'bg-blue-50 border border-blue-200 text-blue-800'
         }`}>
           {message}
         </div>
       )}
 
       {/* Tab Navigation */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-1 mb-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-1 mb-6 shadow-sm">
         <div className="flex space-x-1">
           <button
             onClick={() => setSelectedTab('plans')}
             className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
               selectedTab === 'plans'
-                ? 'bg-blue-500 text-white'
-                : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
             }`}
           >
             Plans
@@ -207,8 +259,8 @@ export default function SubscriptionsPage() {
             onClick={() => setSelectedTab('users')}
             className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
               selectedTab === 'users'
-                ? 'bg-blue-500 text-white'
-                : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
             }`}
           >
             Users
@@ -222,47 +274,53 @@ export default function SubscriptionsPage() {
           {plans.map((plan) => (
             <div
               key={plan.id}
-              className={`bg-slate-800 rounded-xl border ${
-                plan.popular ? 'border-blue-500' : 'border-slate-700'
-              } p-6 relative`}
+              className={`bg-white rounded-xl border-2 ${
+                plan.popular 
+                  ? 'border-blue-500 shadow-lg shadow-blue-500/10' 
+                  : 'border-gray-200 hover:border-gray-300'
+              } p-6 relative transition-all duration-200`}
             >
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-medium">
+                  <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-1 rounded-full text-xs font-semibold shadow-md">
                     Most Popular
                   </span>
                 </div>
               )}
               
               <div className="text-center mb-6">
-                <div className="flex items-center justify-center space-x-2 mb-4">
+                <div className={`flex items-center justify-center space-x-2 mb-4 ${
+                  plan.popular ? 'text-blue-600' : 'text-gray-600'
+                }`}>
                   {plan.icon}
-                  <h3 className="text-xl font-semibold text-white">{plan.name}</h3>
+                  <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
                 </div>
                 <div className="mb-2">
-                  <span className="text-3xl font-bold text-white">{formatCurrency(plan.price)}</span>
-                  <span className="text-slate-400">/{plan.interval}</span>
+                  <span className="text-4xl font-bold text-gray-900">{formatCurrency(plan.price)}</span>
+                  <span className="text-gray-500 text-sm">/month</span>
                 </div>
-                <p className="text-slate-400 text-sm">
-                  {plan.interval === 'annual' ? 'Billed annually' : 'Billed monthly'}
+                <p className="text-gray-400 text-sm">
+                  Billed monthly, cancel anytime
                 </p>
               </div>
 
               <div className="space-y-3 mb-6">
                 {plan.features.map((feature, index) => (
-                  <div key={index} className="flex items-center space-x-3">
-                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span className="text-slate-300 text-sm">{feature}</span>
+                  <div key={index} className="flex items-start space-x-3">
+                    <CheckCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                      plan.popular ? 'text-blue-500' : 'text-emerald-500'
+                    }`} />
+                    <span className="text-gray-600 text-sm leading-relaxed">{feature}</span>
                   </div>
                 ))}
               </div>
 
               <button
                 onClick={() => handleSelectPlan(plan.id)}
-                className={`w-full py-3 rounded-lg font-medium transition-colors ${
+                className={`w-full py-3 rounded-lg font-semibold transition-all duration-200 ${
                   plan.popular
-                    ? 'bg-blue-500 text-white hover:bg-blue-600'
-                    : 'bg-slate-700 text-white hover:bg-slate-600'
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md hover:shadow-lg hover:from-blue-600 hover:to-blue-700'
+                    : 'bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-200'
                 }`}
               >
                 {plan.popular ? 'Get Started' : 'Select Plan'}
@@ -276,18 +334,18 @@ export default function SubscriptionsPage() {
       {selectedTab === 'users' && (
         <div>
           {/* Users Header */}
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 mb-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-white font-semibold mb-2">User Management</h3>
-                <p className="text-slate-400 text-sm">
+                <h3 className="text-gray-900 font-semibold mb-2">User Management</h3>
+                <p className="text-gray-500 text-sm">
                   Manage user accounts and permissions
                 </p>
               </div>
               
               <button
                 onClick={() => setShowAddUserModal(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add User</span>
@@ -296,39 +354,39 @@ export default function SubscriptionsPage() {
           </div>
 
           {/* Users Table */}
-          <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-slate-900 border-b border-slate-700">
+                <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Role</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Plan</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Joined</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Last Login</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plan</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Login</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-700">
+                <tbody className="divide-y divide-gray-200">
                   {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-slate-700/50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{user.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{user.email}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{user.role}</td>
+                    <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.email}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.role}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(user.status)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{user.plan}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{user.joinedDate}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{user.lastLogin}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.plan}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.joinedDate}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.lastLogin}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
-                          <button className="text-blue-400 hover:text-blue-300">
+                          <button className="text-blue-600 hover:text-blue-700">
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleRemoveUser(user.id)}
-                            className="text-red-400 hover:text-red-300"
+                            className="text-red-600 hover:text-red-700"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -346,12 +404,12 @@ export default function SubscriptionsPage() {
       {/* Add User Modal */}
       {showAddUserModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-800 rounded-xl border border-slate-700 w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b border-slate-700">
-              <h2 className="text-xl font-semibold text-white">Add New User</h2>
+          <div className="bg-white rounded-xl border border-gray-200 w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Add New User</h2>
               <button
                 onClick={() => setShowAddUserModal(false)}
-                className="text-slate-400 hover:text-white transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -369,39 +427,39 @@ export default function SubscriptionsPage() {
               });
             }} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Name
                 </label>
                 <input
                   type="text"
                   name="name"
                   required
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter user name"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Email
                 </label>
                 <input
                   type="email"
                   name="email"
                   required
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter email address"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Role
                 </label>
                 <select
                   name="role"
                   required
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Select role</option>
                   <option value="Admin">Admin</option>
@@ -411,13 +469,13 @@ export default function SubscriptionsPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Plan
                 </label>
                 <select
                   name="plan"
                   required
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Select plan</option>
                   <option value="Starter">Starter</option>
@@ -430,13 +488,13 @@ export default function SubscriptionsPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddUserModal(false)}
-                  className="px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+                  className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors border border-gray-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
                 >
                   Add User
                 </button>

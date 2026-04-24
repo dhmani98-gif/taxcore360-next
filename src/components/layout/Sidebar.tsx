@@ -144,7 +144,7 @@ const sidebarItems: SidebarItem[] = [
 ];
 
 export default function Sidebar() {
-  const [expandedItems, setExpandedItems] = useState<string[]>(['Workforce', 'W-2 Generator', '1099 Portal', 'Tools']);
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const pathname = usePathname();
 
   const toggleExpanded = (title: string) => {
@@ -197,10 +197,10 @@ export default function Sidebar() {
     const parentActive = isParentActive(item.children);
     
     return (
-      <div>
+      <div className="mb-1">
         <button
           onClick={() => toggleExpanded(item.title)}
-          className={`w-full flex items-center justify-between px-[14px] py-[10px] rounded-xl transition-all duration-200 group relative font-medium
+          className={`w-full flex items-center justify-between px-[14px] py-[10px] rounded-xl transition-all duration-300 group relative font-medium
             ${parentActive 
               ? 'bg-[rgba(59,130,246,0.12)] text-[#60a5fa] before:content-[""] before:absolute before:left-0 before:top-[6px] before:bottom-[6px] before:w-[3px] before:bg-gradient-to-b before:from-[#60a5fa] before:to-[#3b82f6] before:rounded-r-md before:shadow-[0_0_12px_rgba(96,165,250,0.5)]'
               : 'text-[#94a3b8] hover:bg-white/[0.06] hover:text-white'
@@ -209,15 +209,15 @@ export default function Sidebar() {
         >
           <div className="flex items-center gap-3">
             {item.icon}
-            <span className="text-[13px]">{item.title}</span>
+            <span className="text-[13px] tracking-wide">{item.title}</span>
           </div>
           <ChevronDown 
-            className={`w-3 h-3 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
+            className={`w-3.5 h-3.5 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
           />
         </button>
         
         {expanded && item.children && (
-          <div className="pl-6 mt-1 space-y-0.5 overflow-hidden animate-slideDown border-l border-white/[0.06] ml-[22px]">
+          <div className="mt-1 space-y-0.5 overflow-hidden animate-slideDown">
             {item.children.map((child) => (
               <NavButton key={child.title} item={child} isChild />
             ))}
@@ -244,43 +244,38 @@ export default function Sidebar() {
 
       {/* Navigation - Scrollable Content with Hidden Scrollbar */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-2 scrollbar-hide">
-        {/* Main Section - spacing 24px (mb-6) */}
-        <div className="mb-6">
-          <h3 
-            className="text-[10px] font-semibold text-[#475569] tracking-[0.16em] uppercase pb-2"
-            style={{ fontFamily: 'Inter, sans-serif' }}
-          >
-            Main
-          </h3>
-          <div className="space-y-0.5">
+        {/* Boutique Luxury Accordion Style - Clean & Organized */}
+        <div className="space-y-1">
+          {/* Executive - Single Item */}
+          <div className="mb-1">
             <NavButton item={sidebarItems[0]} />
-            <ExpandableButton item={sidebarItems[1]} />
           </div>
-        </div>
-
-        {/* Tax Filing Section - spacing 24px (mb-6) */}
-        <div className="mb-6">
-          <h3 
-            className="text-[10px] font-semibold text-[#475569] tracking-[0.16em] uppercase pb-2"
-            style={{ fontFamily: 'Inter, sans-serif' }}
-          >
-            Tax Filing
-          </h3>
-          <div className="space-y-0.5">
-            <ExpandableButton item={sidebarItems[2]} />
-            <ExpandableButton item={sidebarItems[3]} />
+          
+          {/* Workforce Section */}
+          <ExpandableButton item={sidebarItems[1]} />
+          
+          {/* Tax Filing Section */}
+          <div className="pt-2">
+            <h3 
+              className="text-[9px] font-semibold text-[#475569] tracking-[0.2em] uppercase px-[14px] pb-2"
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            >
+              Tax Filing
+            </h3>
+            <div className="space-y-1">
+              <ExpandableButton item={sidebarItems[2]} />
+              <ExpandableButton item={sidebarItems[3]} />
+            </div>
           </div>
-        </div>
-
-        {/* Tools Section - spacing 24px (mb-6) */}
-        <div className="mb-6">
-          <h3 
-            className="text-[10px] font-semibold text-[#475569] tracking-[0.16em] uppercase pb-2"
-            style={{ fontFamily: 'Inter, sans-serif' }}
-          >
-            Tools
-          </h3>
-          <div className="space-y-0.5">
+          
+          {/* Tools Section */}
+          <div className="pt-2">
+            <h3 
+              className="text-[9px] font-semibold text-[#475569] tracking-[0.2em] uppercase px-[14px] pb-2"
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            >
+              Tools
+            </h3>
             <ExpandableButton item={sidebarItems[4]} />
           </div>
         </div>
