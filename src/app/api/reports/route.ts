@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
             w9Status: hasW9 ? 'Complete' : 'Missing',
             needs1099: totalAmount >= 600 // 1099 threshold
           };
-        }).filter(v => v.needs1099);
+        }).filter((v: { needs1099: boolean }) => v.needs1099);
 
         return NextResponse.json({
           type: 'vendor-1099',
@@ -79,9 +79,9 @@ export async function GET(req: NextRequest) {
           data: vendor1099Data,
           summary: {
             totalVendors: vendor1099Data.length,
-            totalAmount: vendor1099Data.reduce((sum, v) => sum + v.totalPaid, 0),
-            w9Complete: vendor1099Data.filter(v => v.w9Status === 'Complete').length,
-            w9Missing: vendor1099Data.filter(v => v.w9Status === 'Missing').length
+            totalAmount: vendor1099Data.reduce((sum: number, v: { totalPaid: number }) => sum + v.totalPaid, 0),
+            w9Complete: vendor1099Data.filter((v: { w9Status: string }) => v.w9Status === 'Complete').length,
+            w9Missing: vendor1099Data.filter((v: { w9Status: string }) => v.w9Status === 'Missing').length
           }
         });
 
