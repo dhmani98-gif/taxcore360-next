@@ -7,7 +7,7 @@ import {
   TrendingUp, Building2, AlertTriangle, CheckCircle, 
   Clock, Download, FileSpreadsheet, Printer, Filter,
   ChevronDown, ChevronUp, Search, Briefcase, Shield,
-  Receipt, Wallet, Activity, FileCheck, AlertCircle
+  Receipt, Wallet, Activity, FileCheck, AlertCircle, Inbox
 } from 'lucide-react';
 import { exportToExcel, exportToPDF, formatCurrency, formatSSN } from '@/lib/export';
 
@@ -245,6 +245,19 @@ export default function ReportsPage() {
     );
   };
 
+  // Empty State Component
+  const EmptyState = ({ message = 'No data available for this period' }: { message?: string }) => (
+    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+      <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+        <Inbox className="w-8 h-8 text-[#667085]" />
+      </div>
+      <h3 className="text-lg font-semibold text-[#111827] mb-2">{message}</h3>
+      <p className="text-sm text-[#667085] max-w-sm">
+        Try adjusting your filters or selecting a different time period to see data for this report.
+      </p>
+    </div>
+  );
+
   // Render Report Content
   const renderReportContent = () => {
     if (!selectedReport) return null;
@@ -275,19 +288,26 @@ export default function ReportsPage() {
 
             {/* Employee Table */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-[#111827]">Employee W-2 Details</h3>
-                <div className="flex space-x-2">
+              {/* Table Header with Export Buttons */}
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white">
+                <div className="flex items-center space-x-3">
+                  <h3 className="text-lg font-bold text-[#111827]">Employee W-2 Details</h3>
+                  <span className="text-sm text-[#667085]">({MOCK_DATA.w2Summary.employees.length} records)</span>
+                </div>
+                <div className="flex items-center space-x-2">
                   <button 
                     onClick={() => handleExportExcel('w2-w3-summary')}
-                    className="flex items-center space-x-2 px-3 py-1.5 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 transition-colors"
+                    className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
                   >
                     <FileSpreadsheet className="w-4 h-4" />
-                    <span>Excel</span>
+                    <span>Export Excel</span>
                   </button>
-                  <button className="flex items-center space-x-2 px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors">
+                  <button 
+                    onClick={() => {/* PDF Export */}}
+                    className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                  >
                     <Download className="w-4 h-4" />
-                    <span>PDF</span>
+                    <span>Download PDF</span>
                   </button>
                 </div>
               </div>
@@ -360,8 +380,28 @@ export default function ReportsPage() {
             </div>
 
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-[#111827]">1099-NEC Contractor List</h3>
+              {/* Table Header with Export Buttons */}
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white">
+                <div className="flex items-center space-x-3">
+                  <h3 className="text-lg font-bold text-[#111827]">1099-NEC Contractor List</h3>
+                  <span className="text-sm text-[#667085]">({MOCK_DATA.nec1099.contractors.length} records)</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button 
+                    onClick={() => handleExportExcel('1099-nec-overview')}
+                    className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>Export Excel</span>
+                  </button>
+                  <button 
+                    onClick={() => {/* PDF Export */}}
+                    className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download PDF</span>
+                  </button>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
@@ -420,8 +460,29 @@ export default function ReportsPage() {
             </div>
 
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-[#111827]">Vendor W-9 Status</h3>
+              {/* Table Header with Export Buttons */}
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white">
+                <div className="flex items-center space-x-3">
+                  <h3 className="text-lg font-bold text-[#111827]">Vendor W-9 Status</h3>
+                  <span className="text-sm text-[#667085]">({MOCK_DATA.w9Status.vendors.length} records)</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button 
+                    onClick={() => handleExportExcel('w9-status')}
+                    className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>Export Excel</span>
+                  </button>
+                  <button 
+                    onClick={() => {/* PDF Export */}}
+                    className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download PDF</span>
+                  </button>
+                </div>
+              </div>
                 <div className="flex items-center space-x-2">
                   <Search className="w-4 h-4 text-[#667085]" />
                   <input 
