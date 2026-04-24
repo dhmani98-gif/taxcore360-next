@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createClient } from '@/lib/supabase/server';
-import { sendWelcomeEmail, sendPasswordResetEmail, sendDeadlineReminderEmail } from '@/lib/services/email';
-import { sendUrgentDeadlineSMS } from '@/lib/services/sms';
 import { createAuditLog } from '@/lib/prisma';
 
 /**
@@ -98,15 +96,9 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // Send email if requested
-    if (type === 'EMAIL' || channel === 'EMAIL') {
-      try {
-        await sendWelcomeEmail(user.email, user.name || 'User');
-      } catch (emailError) {
-        console.error('Failed to send email notification:', emailError);
-      }
-    }
-
+    // Note: Email notifications require external email service (Resend)
+    // To enable, configure RESEND_API_KEY in environment variables
+    
     // Create audit log
     await createAuditLog({
       action: 'CREATE',
