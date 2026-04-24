@@ -2,163 +2,697 @@
 
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { FileBarChart, Users, DollarSign, FileText, Calendar, TrendingUp, Building2 } from 'lucide-react';
+import { 
+  FileBarChart, Users, DollarSign, FileText, Calendar, 
+  TrendingUp, Building2, AlertTriangle, CheckCircle, 
+  Clock, Download, FileSpreadsheet, Printer, Filter,
+  ChevronDown, ChevronUp, Search, Briefcase, Shield,
+  Receipt, Wallet, Activity, FileCheck, AlertCircle
+} from 'lucide-react';
+import { exportToExcel, exportToPDF, formatCurrency, formatSSN } from '@/lib/export';
 
-interface ReportCard {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  category: string;
-}
+// Report Categories
+const REPORT_CATEGORIES = [
+  {
+    id: 'tax-forms',
+    name: 'Tax Form Reports',
+    description: 'W-2, W-3, 1099-NEC, and W-9 compliance reports',
+    icon: <FileText className="w-6 h-6" />,
+    color: 'bg-blue-100 text-blue-700 border-blue-200',
+    reports: [
+      { id: 'w2-w3-summary', name: 'W-2 / W-3 Summary', description: 'Complete employee wage and tax summary before final filing' },
+      { id: '1099-nec-overview', name: '1099-NEC Filing Overview', description: 'Independent contractors with payments over $600' },
+      { id: 'w9-status', name: 'W-9 Status Report', description: 'Vendor W-9 completion status tracking' },
+    ]
+  },
+  {
+    id: 'payroll',
+    name: 'Payroll Reports',
+    description: 'Detailed payroll cycles, earnings, and hours',
+    icon: <DollarSign className="w-6 h-6" />,
+    color: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    reports: [
+      { id: 'payroll-register', name: 'Payroll Register', description: 'Gross Pay, Deductions, and Net Pay by cycle' },
+      { id: 'earnings-hours', name: 'Earnings & Hours Report', description: 'Regular and overtime hours breakdown' },
+    ]
+  },
+  {
+    id: 'compliance',
+    name: 'Compliance & Audit',
+    description: 'Tax liability and discrepancy detection',
+    icon: <Shield className="w-6 h-6" />,
+    color: 'bg-purple-100 text-purple-700 border-purple-200',
+    reports: [
+      { id: 'tax-liability', name: 'Tax Liability Report', description: 'Current IRS liability based on payroll issued' },
+      { id: 'discrepancy', name: 'Discrepancy Report', description: 'Smart detection of missing SSNs and incomplete data' },
+    ]
+  }
+];
 
-interface ReportData {
-  employeeCount: number;
-  paidMonths: number;
-  employeeStatement: {
-    name: string;
-    totalWages: number;
-    federalTax: number;
-    stateTax: number;
-  };
-  w2Transmittal: {
-    totalEmployees: number;
-    totalWages: number;
-    totalFederalTax: number;
-  };
-  form1099Compliance: {
-    totalVendors: number;
-    totalPayments: number;
-    compliantVendors: number;
-  };
-  taxReconciliation: {
-    totalPayroll: number;
-    totalWithholding: number;
-    variance: number;
-  };
-}
+// Mock Data for Reports
+const MOCK_DATA = {
+  w2Summary: {
+    totalEmployees: 47,
+    totalWages: 2847500.00,
+    totalFederalTax: 455600.00,
+    totalSSWages: 2847500.00,
+    totalSSTax: 176545.00,
+    totalMedicareWages: 2847500.00,
+    totalMedicareTax: 41288.75,
+    employees: [
+      { id: 1, name: 'John Smith', ssn: '***-**-1234', wages: 75000.00, federalTax: 12000.00, ssWages: 75000.00, ssTax: 4650.00, medicareWages: 75000.00, medicareTax: 1087.50, status: 'READY' },
+      { id: 2, name: 'Sarah Johnson', ssn: '***-**-5678', wages: 82000.00, federalTax: 13120.00, ssWages: 82000.00, ssTax: 5084.00, medicareWages: 82000.00, medicareTax: 1189.00, status: 'READY' },
+      { id: 3, name: 'Michael Brown', ssn: '***-**-9012', wages: 68000.00, federalTax: 10880.00, ssWages: 68000.00, ssTax: 4216.00, medicareWages: 68000.00, medicareTax: 986.00, status: 'REVIEW' },
+      { id: 4, name: 'Emily Davis', ssn: '***-**-3456', wages: 95000.00, federalTax: 15200.00, ssWages: 95000.00, ssTax: 5890.00, medicareWages: 95000.00, medicareTax: 1377.50, status: 'READY' },
+      { id: 5, name: 'David Wilson', ssn: '***-**-7890', wages: 72000.00, federalTax: 11520.00, ssWages: 72000.00, ssTax: 4464.00, medicareWages: 72000.00, medicareTax: 1044.00, status: 'READY' },
+    ]
+  },
+  
+  nec1099: {
+    totalContractors: 23,
+    totalPayments: 184500.00,
+    filingRequired: 18,
+    contractors: [
+      { id: 1, name: 'ABC Consulting LLC', tin: '**-1234567', payments: 15000.00, w9Status: 'COMPLETE', formStatus: 'FILED', lastPayment: '2024-12-15' },
+      { id: 2, name: 'Tech Solutions Inc', tin: '**-9876543', payments: 28000.00, w9Status: 'COMPLETE', formStatus: 'READY', lastPayment: '2024-12-10' },
+      { id: 3, name: 'Creative Design Co', tin: '**-4567890', payments: 8500.00, w9Status: 'PENDING', formStatus: 'ON_HOLD', lastPayment: '2024-11-28' },
+      { id: 4, name: 'Marketing Pros', tin: '**-1112223', payments: 22000.00, w9Status: 'COMPLETE', formStatus: 'FILED', lastPayment: '2024-12-05' },
+      { id: 5, name: 'Legal Advisors Group', tin: '**-4445556', payments: 35000.00, w9Status: 'COMPLETE', formStatus: 'READY', lastPayment: '2024-12-12' },
+    ]
+  },
+  
+  w9Status: {
+    totalVendors: 156,
+    completeW9: 142,
+    pendingW9: 11,
+    expiredW9: 3,
+    vendors: [
+      { id: 1, name: 'Acme Supplies', type: 'Vendor', tin: '**-1234567', w9Date: '2024-01-15', status: 'VALID', expiration: '2025-01-15' },
+      { id: 2, name: 'Global Logistics', type: 'Vendor', tin: '**-9876543', w9Date: '2023-06-20', status: 'EXPIRED', expiration: '2024-06-20' },
+      { id: 3, name: 'Tech Hardware Inc', type: 'Vendor', tin: null, w9Date: null, status: 'MISSING', expiration: null },
+      { id: 4, name: 'Office Furniture Co', type: 'Vendor', tin: '**-4567890', w9Date: '2024-03-10', status: 'VALID', expiration: '2025-03-10' },
+      { id: 5, name: 'Software Solutions', type: 'Vendor', tin: null, w9Date: null, status: 'PENDING', expiration: null },
+    ]
+  },
+  
+  payrollRegister: {
+    currentPeriod: 'December 2024',
+    totalGross: 237291.67,
+    totalDeductions: 71287.50,
+    totalNet: 166004.17,
+    entries: [
+      { id: 1, employee: 'John Smith', gross: 6250.00, federal: 1000.00, ss: 387.50, medicare: 90.63, state: 312.50, net: 4459.37 },
+      { id: 2, employee: 'Sarah Johnson', gross: 6833.33, federal: 1093.33, ss: 423.67, medicare: 99.08, state: 341.67, net: 4875.58 },
+      { id: 3, employee: 'Michael Brown', gross: 5666.67, federal: 906.67, ss: 351.33, medicare: 82.17, state: 283.33, net: 4043.17 },
+      { id: 4, employee: 'Emily Davis', gross: 7916.67, federal: 1266.67, ss: 490.83, medicare: 114.79, state: 395.83, net: 5648.55 },
+      { id: 5, employee: 'David Wilson', gross: 6000.00, federal: 960.00, ss: 372.00, medicare: 87.00, state: 300.00, net: 4281.00 },
+    ]
+  },
+  
+  earningsHours: {
+    totalRegularHours: 7520,
+    totalOvertimeHours: 320,
+    totalEmployees: 47,
+    employees: [
+      { id: 1, name: 'John Smith', regularHours: 160, overtimeHours: 8, regularRate: 39.06, overtimeRate: 58.59, totalEarnings: 6718.72 },
+      { id: 2, name: 'Sarah Johnson', regularHours: 160, overtimeHours: 12, regularRate: 42.71, overtimeRate: 64.07, totalEarnings: 7604.84 },
+      { id: 3, name: 'Michael Brown', regularHours: 160, overtimeHours: 0, regularRate: 35.42, overtimeRate: 53.13, totalEarnings: 5666.67 },
+      { id: 4, name: 'Emily Davis', regularHours: 160, overtimeHours: 16, regularRate: 49.48, overtimeRate: 74.22, totalEarnings: 9103.52 },
+      { id: 5, name: 'David Wilson', regularHours: 160, overtimeHours: 4, regularRate: 37.50, overtimeRate: 56.25, totalEarnings: 6225.00 },
+    ]
+  },
+  
+  taxLiability: {
+    currentQuarter: 'Q4 2024',
+    federalLiability: 113900.00,
+    ssLiability: 44128.50,
+    medicareLiability: 10321.25,
+    stateLiability: 28475.00,
+    totalLiability: 196824.75,
+    dueDate: '2025-01-31',
+    history: [
+      { period: 'Q3 2024', federal: 108500.00, ss: 42045.00, medicare: 9835.50, state: 27125.00, total: 187505.50, status: 'PAID' },
+      { period: 'Q2 2024', federal: 105200.00, ss: 40768.00, medicare: 9536.00, state: 26300.00, total: 181804.00, status: 'PAID' },
+      { period: 'Q1 2024', federal: 102000.00, ss: 39540.00, medicare: 9246.00, state: 25500.00, total: 176286.00, status: 'PAID' },
+    ]
+  },
+  
+  discrepancies: {
+    totalIssues: 12,
+    criticalIssues: 3,
+    warnings: 9,
+    issues: [
+      { id: 1, type: 'CRITICAL', category: 'Missing SSN', description: 'Employee Robert Taylor missing Social Security Number', employee: 'Robert Taylor', action: 'Update Employee Record' },
+      { id: 2, type: 'CRITICAL', category: 'Invalid TIN', description: 'Vendor Global Logistics has expired W-9 (TIN verification failed)', vendor: 'Global Logistics', action: 'Request New W-9' },
+      { id: 3, type: 'CRITICAL', category: 'Address Missing', description: 'Employee Jennifer White has incomplete address (no ZIP code)', employee: 'Jennifer White', action: 'Update Address' },
+      { id: 4, type: 'WARNING', category: 'Tax Mismatch', description: 'Social Security wages exceed federal wages by $1,250 for Mark Johnson', employee: 'Mark Johnson', action: 'Review Payroll' },
+      { id: 5, type: 'WARNING', category: 'Duplicate Entry', description: 'Possible duplicate payment to vendor Tech Solutions Inc on 12/15', vendor: 'Tech Solutions Inc', action: 'Verify Payment' },
+    ]
+  }
+};
 
 export default function ReportsPage() {
-  const [reports, setReports] = useState<ReportCard[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
-  const [reportData, setReportData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [availableReports, setAvailableReports] = useState<any[]>([]);
+  const [year, setYear] = useState('2024');
+  const [quarter, setQuarter] = useState('Q4');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const [filters, setFilters] = useState({
-    year: new Date().getFullYear().toString(),
-    documentType: 'ALL',
-    employee: ''
-  });
+  const handleExportExcel = (reportType: string) => {
+    let data: any = { headers: [], rows: [], title: '', companyInfo: { name: 'TaxCore360 Client' } };
+    
+    switch (reportType) {
+      case 'w2-w3-summary':
+        data = {
+          headers: ['Employee', 'SSN', 'Wages (Box 1)', 'Federal Tax (Box 2)', 'SS Wages (Box 3)', 'SS Tax (Box 4)', 'Medicare Wages (Box 5)', 'Medicare Tax (Box 6)', 'Status'],
+          rows: MOCK_DATA.w2Summary.employees.map(e => [e.name, e.ssn, e.wages, e.federalTax, e.ssWages, e.ssTax, e.medicareWages, e.medicareTax, e.status]),
+          title: 'W-2 / W-3 Summary Report',
+          companyInfo: { name: 'TaxCore360 Client' }
+        };
+        break;
+      case '1099-nec-overview':
+        data = {
+          headers: ['Contractor', 'TIN', 'Total Payments', 'W-9 Status', 'Form Status', 'Last Payment'],
+          rows: MOCK_DATA.nec1099.contractors.map(c => [c.name, c.tin, c.payments, c.w9Status, c.formStatus, c.lastPayment]),
+          title: '1099-NEC Filing Overview',
+          companyInfo: { name: 'TaxCore360 Client' }
+        };
+        break;
+    }
+    
+    exportToExcel(data, `${reportType}_${year}`);
+  };
 
-  useEffect(() => {
-    const fetchReports = async () => {
-      try {
-        const res = await fetch('/api/reports');
-        if (!res.ok) throw new Error('Failed to fetch reports');
-        
-        const data = await res.json();
-        setAvailableReports(data.availableReports || []);
-        
-        const reportCards: ReportCard[] = data.availableReports?.map((report: any) => ({
-          id: report.type,
-          name: report.name,
-          description: report.description,
-          icon: getReportIcon(report.type),
-          category: getReportCategory(report.type)
-        })) || [];
-        
-        setReports(reportCards);
-      } catch (err) {
-        setError('Failed to load reports');
-        console.error('Error fetching reports:', err);
+  const getStatusBadge = (status: string, type: 'w2' | '1099' | 'w9' | 'issue' = 'w2') => {
+    const configs: Record<string, Record<string, string>> = {
+      w2: {
+        READY: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        REVIEW: 'bg-amber-100 text-amber-700 border-amber-200',
+        DRAFT: 'bg-gray-100 text-[#667085] border-gray-200'
+      },
+      '1099': {
+        FILED: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        READY: 'bg-blue-100 text-blue-700 border-blue-200',
+        ON_HOLD: 'bg-red-100 text-red-700 border-red-200'
+      },
+      w9: {
+        VALID: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        EXPIRED: 'bg-red-100 text-red-700 border-red-200',
+        MISSING: 'bg-gray-100 text-[#667085] border-gray-200',
+        PENDING: 'bg-amber-100 text-amber-700 border-amber-200'
+      },
+      issue: {
+        CRITICAL: 'bg-red-100 text-red-700 border-red-200',
+        WARNING: 'bg-amber-100 text-amber-700 border-amber-200'
       }
     };
-
-    fetchReports();
-  }, []);
-
-  const getReportIcon = (type: string) => {
-    const icons: Record<string, React.ReactNode> = {
-      'vendor-1099': <Building2 className="w-6 h-6" />,
-      'payment-summary': <DollarSign className="w-6 h-6" />,
-      'w9-compliance': <FileText className="w-6 h-6" />,
-      'employee-summary': <Users className="w-6 h-6" />,
-      'document-inventory': <FileBarChart className="w-6 h-6" />
-    };
-    return icons[type] || <FileText className="w-6 h-6" />;
-  };
-
-  const getReportCategory = (type: string) => {
-    const categories: Record<string, string> = {
-      'vendor-1099': 'Tax Forms',
-      'payment-summary': 'Payroll',
-      'w9-compliance': 'Compliance',
-      'employee-summary': 'Workforce',
-      'document-inventory': 'Documents'
-    };
-    return categories[type] || 'General';
-  };
-
-  useEffect(() => {
-    if (selectedReport) {
-      fetchReportData(selectedReport);
-    }
-  }, [selectedReport]);
-
-  const fetchReportData = async (reportType: string) => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      const res = await fetch(`/api/reports?type=${reportType}&year=${filters.year}`);
-      if (!res.ok) throw new Error('Failed to fetch report data');
-      
-      const data = await res.json();
-      setReportData(data);
-    } catch (err) {
-      setError('Failed to load report data');
-      console.error('Error fetching report data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOpenReport = (reportId: string) => {
-    setSelectedReport(reportId);
-  };
-
-  const handleBackToReports = () => {
-    setSelectedReport(null);
-    setReportData(null);
-  };
-
-  const handlePrintDocument = () => {
-    window.print();
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
-
-  const getCategoryColor = (category: string) => {
-    const colors = {
-      'Workforce': 'bg-blue-500/20 text-blue-400',
-      'Payroll': 'bg-green-500/20 text-green-400',
-      'Tax Forms': 'bg-purple-500/20 text-purple-400',
-      'Compliance': 'bg-orange-500/20 text-orange-400'
-    };
     
-    return colors[category as keyof typeof colors] || 'bg-slate-500/20 text-slate-400';
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${configs[type][status] || 'bg-gray-100 text-[#667085] border-gray-200'}`}>
+        {status}
+      </span>
+    );
   };
 
-  // If a specific report is selected
-  if (selectedReport && reportData) {
-    const report = reports.find(r => r.id === selectedReport);
+  // Render Report Content
+  const renderReportContent = () => {
+    if (!selectedReport) return null;
+
+    switch (selectedReport) {
+      case 'w2-w3-summary':
+        return (
+          <div className="space-y-6">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Total Employees</p>
+                <p className="text-2xl font-bold text-[#111827] mt-1">{MOCK_DATA.w2Summary.totalEmployees}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Total Wages</p>
+                <p className="text-2xl font-bold text-[#111827] mt-1">{formatCurrency(MOCK_DATA.w2Summary.totalWages)}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Federal Tax</p>
+                <p className="text-2xl font-bold text-[#111827] mt-1">{formatCurrency(MOCK_DATA.w2Summary.totalFederalTax)}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">SS + Medicare</p>
+                <p className="text-2xl font-bold text-[#111827] mt-1">{formatCurrency(MOCK_DATA.w2Summary.totalSSTax + MOCK_DATA.w2Summary.totalMedicareTax)}</p>
+              </div>
+            </div>
+
+            {/* Employee Table */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-[#111827]">Employee W-2 Details</h3>
+                <div className="flex space-x-2">
+                  <button 
+                    onClick={() => handleExportExcel('w2-w3-summary')}
+                    className="flex items-center space-x-2 px-3 py-1.5 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 transition-colors"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>Excel</span>
+                  </button>
+                  <button className="flex items-center space-x-2 px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors">
+                    <Download className="w-4 h-4" />
+                    <span>PDF</span>
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead className="bg-[#F4F7F9] border-b-2 border-gray-300">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">Employee</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">SSN</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">Wages (Box 1)</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">Federal (Box 2)</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">SS Tax (Box 4)</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">Medicare (Box 6)</th>
+                      <th className="px-6 py-3 text-center text-xs font-bold text-[#111827] uppercase">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {MOCK_DATA.w2Summary.employees.map((emp, idx) => (
+                      <tr key={emp.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-[#F9FAFB]/50'} hover:bg-blue-50/30`}>
+                        <td className="px-6 py-4 text-sm font-semibold text-[#111827]">{emp.name}</td>
+                        <td className="px-6 py-4 text-sm text-[#667085] font-mono">{emp.ssn}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#111827] font-mono">{formatCurrency(emp.wages)}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#111827] font-mono">{formatCurrency(emp.federalTax)}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#111827] font-mono">{formatCurrency(emp.ssTax)}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#111827] font-mono">{formatCurrency(emp.medicareTax)}</td>
+                        <td className="px-6 py-4 text-center">{getStatusBadge(emp.status, 'w2')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* IRS Notice */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-amber-800">IRS Filing Notice</h4>
+                  <p className="text-sm text-amber-700 mt-1">
+                    This summary must match your payroll records exactly. W-3 transmittal is due by January 31, {parseInt(year) + 1}. 
+                    Total SS Wages should not exceed $168,600 per employee for {year}.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case '1099-nec-overview':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Total Contractors</p>
+                <p className="text-2xl font-bold text-[#111827] mt-1">{MOCK_DATA.nec1099.totalContractors}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Total Payments</p>
+                <p className="text-2xl font-bold text-[#111827] mt-1">{formatCurrency(MOCK_DATA.nec1099.totalPayments)}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Filing Required</p>
+                <p className="text-2xl font-bold text-[#111827] mt-1">{MOCK_DATA.nec1099.filingRequired}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Missing W-9</p>
+                <p className="text-2xl font-bold text-red-600 mt-1">3</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-[#111827]">1099-NEC Contractor List</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead className="bg-[#F4F7F9] border-b-2 border-gray-300">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">Contractor</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">TIN</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">Payments</th>
+                      <th className="px-6 py-3 text-center text-xs font-bold text-[#111827] uppercase">W-9 Status</th>
+                      <th className="px-6 py-3 text-center text-xs font-bold text-[#111827] uppercase">Form Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">Last Payment</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {MOCK_DATA.nec1099.contractors.map((contractor, idx) => (
+                      <tr key={contractor.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-[#F9FAFB]/50'} hover:bg-blue-50/30`}>
+                        <td className="px-6 py-4 text-sm font-semibold text-[#111827]">{contractor.name}</td>
+                        <td className="px-6 py-4 text-sm text-[#667085] font-mono">{contractor.tin}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#111827] font-mono">{formatCurrency(contractor.payments)}</td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${contractor.w9Status === 'COMPLETE' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {contractor.w9Status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">{getStatusBadge(contractor.formStatus, '1099')}</td>
+                        <td className="px-6 py-4 text-sm text-[#667085]">{contractor.lastPayment}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'w9-status':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Total Vendors</p>
+                <p className="text-2xl font-bold text-[#111827] mt-1">{MOCK_DATA.w9Status.totalVendors}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Valid W-9</p>
+                <p className="text-2xl font-bold text-emerald-600 mt-1">{MOCK_DATA.w9Status.completeW9}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Pending</p>
+                <p className="text-2xl font-bold text-amber-600 mt-1">{MOCK_DATA.w9Status.pendingW9}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Expired/Missing</p>
+                <p className="text-2xl font-bold text-red-600 mt-1">{MOCK_DATA.w9Status.expiredW9}</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-[#111827]">Vendor W-9 Status</h3>
+                <div className="flex items-center space-x-2">
+                  <Search className="w-4 h-4 text-[#667085]" />
+                  <input 
+                    type="text" 
+                    placeholder="Search vendors..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead className="bg-[#F4F7F9] border-b-2 border-gray-300">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">Vendor</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">TIN</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">W-9 Date</th>
+                      <th className="px-6 py-3 text-center text-xs font-bold text-[#111827] uppercase">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">Expiration</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {MOCK_DATA.w9Status.vendors.map((vendor, idx) => (
+                      <tr key={vendor.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-[#F9FAFB]/50'} hover:bg-blue-50/30`}>
+                        <td className="px-6 py-4 text-sm font-semibold text-[#111827]">{vendor.name}</td>
+                        <td className="px-6 py-4 text-sm text-[#667085]">{vendor.type}</td>
+                        <td className="px-6 py-4 text-sm text-[#667085] font-mono">{vendor.tin || '—'}</td>
+                        <td className="px-6 py-4 text-sm text-[#667085]">{vendor.w9Date || '—'}</td>
+                        <td className="px-6 py-4 text-center">{getStatusBadge(vendor.status, 'w9')}</td>
+                        <td className="px-6 py-4 text-sm text-[#667085]">{vendor.expiration || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'payroll-register':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Period</p>
+                <p className="text-lg font-bold text-[#111827] mt-1">{MOCK_DATA.payrollRegister.currentPeriod}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Gross Pay</p>
+                <p className="text-2xl font-bold text-[#111827] mt-1">{formatCurrency(MOCK_DATA.payrollRegister.totalGross)}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Deductions</p>
+                <p className="text-2xl font-bold text-red-600 mt-1">{formatCurrency(MOCK_DATA.payrollRegister.totalDeductions)}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Net Pay</p>
+                <p className="text-2xl font-bold text-emerald-600 mt-1">{formatCurrency(MOCK_DATA.payrollRegister.totalNet)}</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-[#111827]">Payroll Register Details</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead className="bg-[#F4F7F9] border-b-2 border-gray-300">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">Employee</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">Gross</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">Federal</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">SS</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">Medicare</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">State</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">Net Pay</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {MOCK_DATA.payrollRegister.entries.map((entry, idx) => (
+                      <tr key={entry.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-[#F9FAFB]/50'} hover:bg-blue-50/30`}>
+                        <td className="px-6 py-4 text-sm font-semibold text-[#111827]">{entry.employee}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#111827] font-mono">{formatCurrency(entry.gross)}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#667085] font-mono">{formatCurrency(entry.federal)}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#667085] font-mono">{formatCurrency(entry.ss)}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#667085] font-mono">{formatCurrency(entry.medicare)}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#667085] font-mono">{formatCurrency(entry.state)}</td>
+                        <td className="px-6 py-4 text-sm text-right text-emerald-700 font-semibold font-mono">{formatCurrency(entry.net)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'earnings-hours':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Regular Hours</p>
+                <p className="text-2xl font-bold text-[#111827] mt-1">{MOCK_DATA.earningsHours.totalRegularHours.toLocaleString()}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Overtime Hours</p>
+                <p className="text-2xl font-bold text-amber-600 mt-1">{MOCK_DATA.earningsHours.totalOvertimeHours.toLocaleString()}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Total Employees</p>
+                <p className="text-2xl font-bold text-[#111827] mt-1">{MOCK_DATA.earningsHours.totalEmployees}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Total Earnings</p>
+                <p className="text-2xl font-bold text-emerald-600 mt-1">{formatCurrency(MOCK_DATA.payrollRegister.totalGross)}</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-[#111827]">Earnings & Hours Breakdown</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead className="bg-[#F4F7F9] border-b-2 border-gray-300">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">Employee</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">Regular Hrs</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">Overtime Hrs</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">Regular Rate</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">OT Rate</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">Total Earnings</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {MOCK_DATA.earningsHours.employees.map((emp, idx) => (
+                      <tr key={emp.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-[#F9FAFB]/50'} hover:bg-blue-50/30`}>
+                        <td className="px-6 py-4 text-sm font-semibold text-[#111827]">{emp.name}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#111827]">{emp.regularHours}</td>
+                        <td className="px-6 py-4 text-sm text-right text-amber-600 font-semibold">{emp.overtimeHours || '—'}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#667085] font-mono">{formatCurrency(emp.regularRate)}/hr</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#667085] font-mono">{emp.overtimeHours ? formatCurrency(emp.overtimeRate) + '/hr' : '—'}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#111827] font-semibold font-mono">{formatCurrency(emp.totalEarnings)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'tax-liability':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Current Quarter</p>
+                <p className="text-lg font-bold text-[#111827] mt-1">{MOCK_DATA.taxLiability.currentQuarter}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">Federal Liability</p>
+                <p className="text-2xl font-bold text-[#111827] mt-1">{formatCurrency(MOCK_DATA.taxLiability.federalLiability)}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <p className="text-xs text-[#667085] uppercase tracking-wide">SS + Medicare</p>
+                <p className="text-2xl font-bold text-[#111827] mt-1">{formatCurrency(MOCK_DATA.taxLiability.ssLiability + MOCK_DATA.taxLiability.medicareLiability)}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-red-200 p-4 shadow-sm bg-red-50">
+                <p className="text-xs text-red-600 uppercase tracking-wide">Total Due</p>
+                <p className="text-2xl font-bold text-red-700 mt-1">{formatCurrency(MOCK_DATA.taxLiability.totalLiability)}</p>
+                <p className="text-xs text-red-600 mt-1">Due: {MOCK_DATA.taxLiability.dueDate}</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-[#111827]">Tax Liability History</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead className="bg-[#F4F7F9] border-b-2 border-gray-300">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">Period</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">Federal</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">SS</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">Medicare</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">State</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-[#111827] uppercase">Total</th>
+                      <th className="px-6 py-3 text-center text-xs font-bold text-[#111827] uppercase">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    <tr className="bg-blue-50/50">
+                      <td className="px-6 py-4 text-sm font-semibold text-[#111827]">{MOCK_DATA.taxLiability.currentQuarter}</td>
+                      <td className="px-6 py-4 text-sm text-right text-[#111827] font-mono">{formatCurrency(MOCK_DATA.taxLiability.federalLiability)}</td>
+                      <td className="px-6 py-4 text-sm text-right text-[#667085] font-mono">{formatCurrency(MOCK_DATA.taxLiability.ssLiability)}</td>
+                      <td className="px-6 py-4 text-sm text-right text-[#667085] font-mono">{formatCurrency(MOCK_DATA.taxLiability.medicareLiability)}</td>
+                      <td className="px-6 py-4 text-sm text-right text-[#667085] font-mono">{formatCurrency(MOCK_DATA.taxLiability.stateLiability)}</td>
+                      <td className="px-6 py-4 text-sm text-right text-[#111827] font-semibold font-mono">{formatCurrency(MOCK_DATA.taxLiability.totalLiability)}</td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">DUE</span>
+                      </td>
+                    </tr>
+                    {MOCK_DATA.taxLiability.history.map((period, idx) => (
+                      <tr key={period.period} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-[#F9FAFB]/50'} hover:bg-blue-50/30`}>
+                        <td className="px-6 py-4 text-sm font-semibold text-[#111827]">{period.period}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#111827] font-mono">{formatCurrency(period.federal)}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#667085] font-mono">{formatCurrency(period.ss)}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#667085] font-mono">{formatCurrency(period.medicare)}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#667085] font-mono">{formatCurrency(period.state)}</td>
+                        <td className="px-6 py-4 text-sm text-right text-[#111827] font-semibold font-mono">{formatCurrency(period.total)}</td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">PAID</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'discrepancy':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-red-50 rounded-xl border border-red-200 p-4">
+                <div className="flex items-center space-x-2">
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                  <p className="text-sm font-medium text-red-800">Critical Issues</p>
+                </div>
+                <p className="text-3xl font-bold text-red-700 mt-2">{MOCK_DATA.discrepancies.criticalIssues}</p>
+                <p className="text-xs text-red-600 mt-1">Require immediate action</p>
+              </div>
+              <div className="bg-amber-50 rounded-xl border border-amber-200 p-4">
+                <div className="flex items-center space-x-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-600" />
+                  <p className="text-sm font-medium text-amber-800">Warnings</p>
+                </div>
+                <p className="text-3xl font-bold text-amber-700 mt-2">{MOCK_DATA.discrepancies.warnings}</p>
+                <p className="text-xs text-amber-600 mt-1">Review recommended</p>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <div className="flex items-center space-x-2">
+                  <Activity className="w-5 h-5 text-[#667085]" />
+                  <p className="text-sm font-medium text-[#667085]">Total Issues</p>
+                </div>
+                <p className="text-3xl font-bold text-[#111827] mt-2">{MOCK_DATA.discrepancies.totalIssues}</p>
+                <p className="text-xs text-[#667085] mt-1">Detected by system</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-[#111827]">Discrepancy Report</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead className="bg-[#F4F7F9] border-b-2 border-gray-300">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">Severity</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">Category</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">Description</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">Entity</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#111827] uppercase">Required Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {MOCK_DATA.discrepancies.issues.map((issue, idx) => (
+                      <tr key={issue.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-[#F9FAFB]/50'} hover:bg-blue-50/30`}>
+                        <td className="px-6 py-4">{getStatusBadge(issue.type, 'issue')}</td>
+                        <td className="px-6 py-4 text-sm font-medium text-[#111827]">{issue.category}</td>
+                        <td className="px-6 py-4 text-sm text-[#667085]">{issue.description}</td>
+                        <td className="px-6 py-4 text-sm text-[#111827]">{issue.employee || issue.vendor}</td>
+                        <td className="px-6 py-4">
+                          <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                            {issue.action}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  // Main Content
+  if (selectedReport) {
+    const category = REPORT_CATEGORIES.find(c => c.reports.find(r => r.id === selectedReport));
+    const report = category?.reports.find(r => r.id === selectedReport);
     
     return (
       <DashboardLayout 
@@ -166,325 +700,112 @@ export default function ReportsPage() {
         description={report?.description || ''}
       >
         {/* Report Header */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={handleBackToReports}
-              className="flex items-center space-x-2 text-blue-400 hover:text-blue-300 transition-colors"
-            >
-              <FileBarChart className="w-4 h-4" />
-              <span>Back To Reports</span>
-            </button>
-            
+        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <label className="text-slate-300 text-sm">Document Type:</label>
-                <select
-                  value={filters.documentType}
-                  onChange={(e) => setFilters(prev => ({ ...prev, documentType: e.target.value }))}
-                  className="px-3 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="ALL">All Types</option>
-                  <option value="PDF">PDF</option>
-                  <option value="Excel">Excel</option>
-                  <option value="CSV">CSV</option>
-                </select>
-              </div>
-              
-              <div className="flex items-center space-x-3">
-                <label className="text-slate-300 text-sm">Year:</label>
-                <select
-                  value={filters.year}
-                  onChange={(e) => setFilters(prev => ({ ...prev, year: e.target.value }))}
-                  className="px-3 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="2024">2024</option>
-                  <option value="2023">2023</option>
-                  <option value="2022">2022</option>
-                </select>
-              </div>
-              
-              <div className="flex items-center space-x-3">
-                <label className="text-slate-300 text-sm">Employee:</label>
-                <select
-                  value={filters.employee}
-                  onChange={(e) => setFilters(prev => ({ ...prev, employee: e.target.value }))}
-                  className="px-3 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="ALL">All Employees</option>
-                  <option value="John Doe">John Doe</option>
-                  <option value="Jane Smith">Jane Smith</option>
-                </select>
-              </div>
-              
               <button
-                onClick={handlePrintDocument}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                onClick={() => setSelectedReport(null)}
+                className="flex items-center space-x-2 text-[#667085] hover:text-[#111827] transition-colors"
               >
-                <FileText className="w-4 h-4" />
-                <span>Print Document</span>
+                <FileBarChart className="w-4 h-4" />
+                <span className="text-sm font-medium">Back to Reports</span>
+              </button>
+              <div className="h-4 w-px bg-gray-300" />
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${category?.color}`}>
+                {category?.name}
+              </span>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
+                <label className="text-sm text-[#667085]">Year:</label>
+                <select 
+                  value={year} 
+                  onChange={(e) => setYear(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option>2024</option>
+                  <option>2023</option>
+                </select>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <label className="text-sm text-[#667085]">Quarter:</label>
+                <select 
+                  value={quarter}
+                  onChange={(e) => setQuarter(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option>Q1</option>
+                  <option>Q2</option>
+                  <option>Q3</option>
+                  <option>Q4</option>
+                </select>
+              </div>
+              
+              <button className="flex items-center space-x-2 px-3 py-1.5 bg-[#111827] text-white text-sm rounded-lg hover:bg-gray-800 transition-colors">
+                <Printer className="w-4 h-4" />
+                <span>Print</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* Report Content */}
-        <div className="bg-white rounded-xl border border-slate-700 p-8">
-          {selectedReport === 'employee-count' && (
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-6">Employee Count Report</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-blue-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-2">Total Employees</h3>
-                  <p className="text-3xl font-bold text-blue-600">{reportData.employeeCount}</p>
-                  <p className="text-blue-700 text-sm mt-2">Active workforce</p>
-                </div>
-                <div className="bg-green-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-green-900 mb-2">Departments</h3>
-                  <p className="text-3xl font-bold text-green-600">8</p>
-                  <p className="text-green-700 text-sm mt-2">Active departments</p>
-                </div>
-                <div className="bg-purple-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-purple-900 mb-2">New Hires</h3>
-                  <p className="text-3xl font-bold text-purple-600">12</p>
-                  <p className="text-purple-700 text-sm mt-2">This quarter</p>
-                </div>
-              </div>
-              
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">Department Breakdown</h3>
-                <div className="space-y-3">
-                  {['Engineering', 'Sales', 'Marketing', 'Operations', 'HR', 'Finance'].map((dept, index) => (
-                    <div key={dept} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                      <span className="font-medium text-slate-700">{dept}</span>
-                      <span className="text-slate-600">{Math.floor(Math.random() * 30 + 5)} employees</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {selectedReport === 'paid-months' && (
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-6">Paid Months Report</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div className="bg-green-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-green-900 mb-2">Paid Months</h3>
-                  <p className="text-3xl font-bold text-green-600">{reportData.paidMonths}</p>
-                  <p className="text-green-700 text-sm mt-2">Months processed</p>
-                </div>
-                <div className="bg-blue-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-2">Average Monthly</h3>
-                  <p className="text-3xl font-bold text-blue-600">{formatCurrency(729167)}</p>
-                  <p className="text-blue-700 text-sm mt-2">Payroll amount</p>
-                </div>
-              </div>
-              
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">Monthly Breakdown</h3>
-                <div className="space-y-3">
-                  {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((month, index) => (
-                    <div key={month} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                      <span className="font-medium text-slate-700">{month} 2024</span>
-                      <div className="text-right">
-                        <span className="text-slate-900 font-medium">{formatCurrency(Math.floor(Math.random() * 100000 + 600000))}</span>
-                        <span className="text-green-600 text-sm ml-2">Paid</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {selectedReport === 'employee-statement' && (
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-6">Employee Statement</h2>
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">{reportData.employeeStatement.name}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-blue-50 rounded-lg p-6">
-                    <h4 className="text-sm font-medium text-blue-900 mb-2">Total Wages</h4>
-                    <p className="text-2xl font-bold text-blue-600">{formatCurrency(reportData.employeeStatement.totalWages)}</p>
-                  </div>
-                  <div className="bg-green-50 rounded-lg p-6">
-                    <h4 className="text-sm font-medium text-green-900 mb-2">Federal Tax</h4>
-                    <p className="text-2xl font-bold text-green-600">{formatCurrency(reportData.employeeStatement.federalTax)}</p>
-                  </div>
-                  <div className="bg-purple-50 rounded-lg p-6">
-                    <h4 className="text-sm font-medium text-purple-900 mb-2">State Tax</h4>
-                    <p className="text-2xl font-bold text-purple-600">{formatCurrency(reportData.employeeStatement.stateTax)}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">Monthly Earnings</h3>
-                <div className="space-y-3">
-                  {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((month, index) => (
-                    <div key={month} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                      <span className="font-medium text-slate-700">{month} 2024</span>
-                      <span className="text-slate-900 font-medium">{formatCurrency(reportData.employeeStatement.totalWages / 12)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {selectedReport === 'w2-transmittal' && (
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-6">W-2 Transmittal Report</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-blue-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-2">Total Employees</h3>
-                  <p className="text-3xl font-bold text-blue-600">{reportData.w2Transmittal.totalEmployees}</p>
-                  <p className="text-blue-700 text-sm mt-2">W-2 forms issued</p>
-                </div>
-                <div className="bg-green-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-green-900 mb-2">Total Wages</h3>
-                  <p className="text-3xl font-bold text-green-600">{formatCurrency(reportData.w2Transmittal.totalWages)}</p>
-                  <p className="text-green-700 text-sm mt-2">Annual wages</p>
-                </div>
-                <div className="bg-purple-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-purple-900 mb-2">Federal Tax</h3>
-                  <p className="text-3xl font-bold text-purple-600">{formatCurrency(reportData.w2Transmittal.totalFederalTax)}</p>
-                  <p className="text-purple-700 text-sm mt-2">Total withheld</p>
-                </div>
-              </div>
-              
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">Form W-2 Summary</h3>
-                <div className="bg-slate-50 rounded-lg p-6">
-                  <p className="text-slate-700 mb-4">This report summarizes all W-2 forms for submission to the SSA. All {reportData.w2Transmittal.totalEmployees} employee W-2 forms have been processed and are ready for electronic filing.</p>
-                  <div className="flex items-center space-x-4">
-                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">Ready to File</span>
-                    <span className="text-slate-600 text-sm">Generated: {new Date().toLocaleDateString()}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {selectedReport === '1099-compliance' && (
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-6">1099 Compliance Report</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-blue-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-2">Total Vendors</h3>
-                  <p className="text-3xl font-bold text-blue-600">{reportData.form1099Compliance.totalVendors}</p>
-                  <p className="text-blue-700 text-sm mt-2">In system</p>
-                </div>
-                <div className="bg-green-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-green-900 mb-2">Total Payments</h3>
-                  <p className="text-3xl font-bold text-green-600">{formatCurrency(reportData.form1099Compliance.totalPayments)}</p>
-                  <p className="text-green-700 text-sm mt-2">Year to date</p>
-                </div>
-                <div className="bg-purple-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-purple-900 mb-2">Compliant Vendors</h3>
-                  <p className="text-3xl font-bold text-purple-600">{reportData.form1099Compliance.compliantVendors}</p>
-                  <p className="text-purple-700 text-sm mt-2">{Math.round((reportData.form1099Compliance.compliantVendors / reportData.form1099Compliance.totalVendors) * 100)}% compliance</p>
-                </div>
-              </div>
-              
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">Compliance Status</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                    <span className="font-medium text-green-900">W-9 Forms Collected</span>
-                    <span className="text-green-600">89%</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                    <span className="font-medium text-yellow-900">TIN Verification</span>
-                    <span className="text-yellow-600">76%</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                    <span className="font-medium text-blue-900">Forms Ready</span>
-                    <span className="text-blue-600">67%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {selectedReport === 'tax-reconciliation' && (
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-6">Tax Reconciliation Report</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-blue-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-2">Total Payroll</h3>
-                  <p className="text-3xl font-bold text-blue-600">{formatCurrency(reportData.taxReconciliation.totalPayroll)}</p>
-                  <p className="text-blue-700 text-sm mt-2">Year to date</p>
-                </div>
-                <div className="bg-green-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-green-900 mb-2">Total Withholding</h3>
-                  <p className="text-3xl font-bold text-green-600">{formatCurrency(reportData.taxReconciliation.totalWithholding)}</p>
-                  <p className="text-green-700 text-sm mt-2">All taxes</p>
-                </div>
-                <div className="bg-purple-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-purple-900 mb-2">Variance</h3>
-                  <p className="text-3xl font-bold text-purple-600">{formatCurrency(reportData.taxReconciliation.variance)}</p>
-                  <p className="text-purple-700 text-sm mt-2">Under/over</p>
-                </div>
-              </div>
-              
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">Tax Breakdown</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                    <span className="font-medium text-slate-700">Federal Income Tax</span>
-                    <span className="text-slate-900">{formatCurrency(reportData.taxReconciliation.totalWithholding * 0.7)}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                    <span className="font-medium text-slate-700">Social Security Tax</span>
-                    <span className="text-slate-900">{formatCurrency(reportData.taxReconciliation.totalWithholding * 0.2)}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                    <span className="font-medium text-slate-700">Medicare Tax</span>
-                    <span className="text-slate-900">{formatCurrency(reportData.taxReconciliation.totalWithholding * 0.1)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        {renderReportContent()}
       </DashboardLayout>
     );
   }
 
-  // Main reports grid view
+  // Reports Grid
   return (
     <DashboardLayout 
-      title="Reports"
-      description="Generate and view various tax and payroll reports"
+      title="Reports Dashboard"
+      description="Comprehensive tax, payroll, and compliance reporting"
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {reports.map((report) => (
-          <div
-            key={report.id}
-            className="bg-slate-800 rounded-xl border border-slate-700 p-6 hover:bg-slate-700 transition-colors cursor-pointer"
-            onClick={() => handleOpenReport(report.id)}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${getCategoryColor(report.category)}`}>
-                {report.icon}
+      <div className="space-y-8">
+        {REPORT_CATEGORIES.map((category) => (
+          <div key={category.id}>
+            <div className="flex items-center space-x-3 mb-4">
+              <div className={`p-2 rounded-lg ${category.color}`}>
+                {category.icon}
               </div>
-              <span className={`text-xs px-2 py-1 rounded-full ${getCategoryColor(report.category)}`}>
-                {report.category}
-              </span>
+              <div>
+                <h2 className="text-xl font-bold text-[#111827]">{category.name}</h2>
+                <p className="text-sm text-[#667085]">{category.description}</p>
+              </div>
             </div>
             
-            <h3 className="text-white font-semibold text-lg mb-2">{report.name}</h3>
-            <p className="text-slate-400 text-sm mb-4">{report.description}</p>
-            
-            <button className="flex items-center space-x-2 text-blue-400 hover:text-blue-300 transition-colors">
-              <FileBarChart className="w-4 h-4" />
-              <span className="text-sm font-medium">Open Report Page</span>
-            </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {category.reports.map((report) => (
+                <div
+                  key={report.id}
+                  onClick={() => setSelectedReport(report.id)}
+                  className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${category.color}`}>
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-[#667085] group-hover:text-blue-600 transition-colors" />
+                  </div>
+                  <h3 className="font-semibold text-[#111827] mb-1">{report.name}</h3>
+                  <p className="text-sm text-[#667085]">{report.description}</p>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
     </DashboardLayout>
+  );
+}
+
+// ChevronRight component for the grid
+function ChevronRight({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    </svg>
   );
 }
