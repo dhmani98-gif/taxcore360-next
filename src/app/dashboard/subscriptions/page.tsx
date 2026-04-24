@@ -216,11 +216,11 @@ export default function SubscriptionsPage() {
 
   const getStatusBadge = (status: string) => {
     return status === 'Active' ? (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
         Active
       </span>
     ) : (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-200">
         Inactive
       </span>
     );
@@ -249,8 +249,8 @@ export default function SubscriptionsPage() {
             onClick={() => setSelectedTab('plans')}
             className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
               selectedTab === 'plans'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                ? 'bg-[#111827] text-white shadow-sm'
+                : 'text-[#667085] hover:text-[#111827] hover:bg-gray-100'
             }`}
           >
             Plans
@@ -259,8 +259,8 @@ export default function SubscriptionsPage() {
             onClick={() => setSelectedTab('users')}
             className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
               selectedTab === 'users'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                ? 'bg-[#111827] text-white shadow-sm'
+                : 'text-[#667085] hover:text-[#111827] hover:bg-gray-100'
             }`}
           >
             Users
@@ -290,7 +290,7 @@ export default function SubscriptionsPage() {
               
               <div className="text-center mb-6">
                 <div className={`flex items-center justify-center space-x-2 mb-4 ${
-                  plan.popular ? 'text-blue-600' : 'text-gray-600'
+                  plan.popular ? 'text-[#B45309]' : 'text-[#667085]'
                 }`}>
                   {plan.icon}
                   <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
@@ -308,7 +308,7 @@ export default function SubscriptionsPage() {
                 {plan.features.map((feature, index) => (
                   <div key={index} className="flex items-start space-x-3">
                     <CheckCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
-                      plan.popular ? 'text-blue-500' : 'text-emerald-500'
+                      plan.popular ? 'text-[#B45309]' : 'text-emerald-500'
                     }`} />
                     <span className="text-gray-600 text-sm leading-relaxed">{feature}</span>
                   </div>
@@ -319,8 +319,8 @@ export default function SubscriptionsPage() {
                 onClick={() => handleSelectPlan(plan.id)}
                 className={`w-full py-3 rounded-lg font-semibold transition-all duration-200 ${
                   plan.popular
-                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md hover:shadow-lg hover:from-blue-600 hover:to-blue-700'
-                    : 'bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-200'
+                    ? 'bg-[#B45309] text-white shadow-md hover:shadow-lg hover:bg-[#92400E]'
+                    : 'bg-gray-100 text-[#111827] hover:bg-gray-200 border border-gray-200'
                 }`}
               >
                 {plan.popular ? 'Get Started' : 'Select Plan'}
@@ -357,17 +357,17 @@ export default function SubscriptionsPage() {
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
-                {/* Header - Professional Accounting Style */}
-                <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-300">
+                {/* Header - Ice Grey #F4F7F9 */}
+                <thead className="bg-[#F4F7F9] border-b-2 border-gray-300">
                   <tr>
-                    <th className="px-8 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Name</th>
-                    <th className="px-8 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Email</th>
-                    <th className="px-8 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Role</th>
-                    <th className="px-8 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Status</th>
-                    <th className="px-8 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Plan</th>
-                    <th className="px-8 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Joined Date</th>
-                    <th className="px-8 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Last Login</th>
-                    <th className="px-8 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
+                    <th className="px-8 py-4 text-left text-xs font-bold text-[#111827] uppercase tracking-wider border-r border-gray-200">Name</th>
+                    <th className="px-8 py-4 text-left text-xs font-bold text-[#111827] uppercase tracking-wider border-r border-gray-200">Email</th>
+                    <th className="px-8 py-4 text-center text-xs font-bold text-[#111827] uppercase tracking-wider border-r border-gray-200">Role</th>
+                    <th className="px-8 py-4 text-center text-xs font-bold text-[#111827] uppercase tracking-wider border-r border-gray-200">Status</th>
+                    <th className="px-8 py-4 text-center text-xs font-bold text-[#111827] uppercase tracking-wider border-r border-gray-200">Plan</th>
+                    <th className="px-8 py-4 text-center text-xs font-bold text-[#111827] uppercase tracking-wider border-r border-gray-200">Joined Date</th>
+                    <th className="px-8 py-4 text-center text-xs font-bold text-[#111827] uppercase tracking-wider border-r border-gray-200">Last Login</th>
+                    <th className="px-8 py-4 text-center text-xs font-bold text-[#111827] uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 {/* Body - Enhanced Readability */}
@@ -375,22 +375,22 @@ export default function SubscriptionsPage() {
                   {users.map((user, index) => (
                     <tr 
                       key={user.id} 
-                      className={`transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-blue-50/30`}
+                      className={`transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-[#F9FAFB]/50'} hover:bg-blue-50/30`}
                     >
-                      <td className="px-8 py-5 text-sm font-semibold text-gray-900 border-r border-gray-100">{user.name}</td>
-                      <td className="px-8 py-5 text-sm text-gray-600 border-r border-gray-100">{user.email}</td>
+                      <td className="px-8 py-5 text-sm font-semibold text-[#111827] border-r border-gray-100">{user.name}</td>
+                      <td className="px-8 py-5 text-sm text-[#667085] border-r border-gray-100">{user.email}</td>
                       <td className="px-8 py-5 text-sm text-center border-r border-gray-100">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-[#111827]">
                           {user.role}
                         </span>
                       </td>
                       <td className="px-8 py-5 text-center border-r border-gray-100">{getStatusBadge(user.status)}</td>
-                      <td className="px-8 py-5 text-sm text-center font-medium text-gray-700 border-r border-gray-100">{user.plan}</td>
-                      <td className="px-8 py-5 text-sm text-center text-gray-600 border-r border-gray-100">{user.joinedDate}</td>
-                      <td className="px-8 py-5 text-sm text-center text-gray-500 border-r border-gray-100">{user.lastLogin}</td>
+                      <td className="px-8 py-5 text-sm text-center font-medium text-[#111827] border-r border-gray-100">{user.plan}</td>
+                      <td className="px-8 py-5 text-sm text-center text-[#667085] border-r border-gray-100">{user.joinedDate}</td>
+                      <td className="px-8 py-5 text-sm text-center text-[#667085] border-r border-gray-100">{user.lastLogin}</td>
                       <td className="px-8 py-5 text-center">
                         <div className="flex items-center justify-center space-x-3">
-                          <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
+                          <button className="p-2 text-[#111827] hover:bg-gray-100 rounded-lg transition-colors" title="Edit">
                             <Edit className="w-4 h-4" />
                           </button>
                           <button

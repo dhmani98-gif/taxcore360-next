@@ -209,7 +209,7 @@ export default function Sidebar() {
         >
           <div className="flex items-center gap-3">
             {item.icon}
-            <span className="text-[13px] tracking-wide">{item.title}</span>
+            <span className="font-medium text-[#E5E7EB]">{item.title}</span>
           </div>
           <ChevronDown 
             className={`w-3.5 h-3.5 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
@@ -228,7 +228,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-[280px] min-w-[280px] bg-gradient-to-b from-[#0a1628] via-[#0f1f38] via-[40%] to-[#101f3a] border-r border-white/[0.05] h-screen sticky top-0 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.2)] z-50">
+    <aside className="w-[280px] min-w-[280px] bg-[#101828] text-white flex flex-col sticky top-0 h-screen transition-all duration-300 ease-in-out shadow-2xl z-40">
       {/* Logo Section - Exact specs: 40x40px with 12px rounded corners */}
       <div className="flex-none p-6 pb-4">
         <div className="flex items-center gap-3">
@@ -282,15 +282,15 @@ export default function Sidebar() {
       </nav>
 
       {/* User Section - with 1px border-top at 6% opacity */}
-      <div className="flex-none p-4 pt-3 border-t border-white/[0.06]">
+      <div className="flex-none p-4 pt-3 border-t border-[#374151]">
         <div className="bg-white/[0.04] rounded-xl p-2.5">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gradient-to-br from-[#3b82f6] to-[#4f46e5] rounded-lg flex items-center justify-center">
-              <span className="text-white text-sm font-semibold" style={{ fontFamily: 'Inter, sans-serif' }}>JD</span>
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-lg">T</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[#e2e8f0] text-[13px] font-semibold truncate" style={{ fontFamily: 'Inter, sans-serif' }}>John Doe</p>
-              <p className="text-[#64748b] text-[10px]" style={{ fontFamily: 'Inter, sans-serif' }}>Administrator</p>
+            <div>
+              <h1 className="font-bold text-lg tracking-tight text-white">TaxCore360</h1>
+              <p className="text-xs text-[#9CA3AF]">Tax Compliance</p>
             </div>
           </div>
           <button 
