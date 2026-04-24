@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin, createAuditLog } from '@/lib/db';
+import { db, supabaseAdmin, createAuditLog } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
 
 export async function GET(req: NextRequest) {
@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
+    const dbUser = await db.users.findUnique({ supabaseUid: user.id });
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const { searchParams } = new URL(req.url);
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
+    const dbUser = await db.users.findUnique({ supabaseUid: user.id });
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const body = await req.json();
@@ -118,7 +118,7 @@ export async function PATCH(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
+    const dbUser = await db.users.findUnique({ supabaseUid: user.id });
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const body = await req.json();
@@ -128,31 +128,39 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Submission ID and approval status required' }, { status: 400 });
     }
 
-    const submission = await (prisma as any).w9Submission.findFirst({
-      where: { id, companyId: dbUser.companyId },
-    });
+    // Check submission exists
+    const { data: submission } = await supabaseAdmin
+      .from('w9_submissions')
+      .select('id')
+      .eq('id', id)
+      .eq('company_id', dbUser.companyId)
+      .single();
+    
     if (!submission) {
       return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
     }
 
-    const updated = await (prisma as any).w9Submission.update({
-      where: { id },
-      data: {
-        approvalStatus,
-        reviewNotes: reviewNotes ?? null,
-        reviewedAt: new Date(),
-      },
-    });
+    // Update submission
+    const { data: updated, error } = await supabaseAdmin
+      .from('w9_submissions')
+      .update({
+        approval_status: approvalStatus,
+        review_notes: reviewNotes ?? null,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
 
-    await prisma.auditLog.create({
-      data: {
-        action: 'UPDATE',
-        userId: dbUser.id,
-        entityType: 'VENDOR',
-        entityId: updated.id,
-        newValues: { approvalStatus, reviewNotes },
-        companyId: dbUser.companyId,
-      },
+    if (error) throw error;
+
+    await createAuditLog({
+      action: 'UPDATE',
+      userId: dbUser.id,
+      entityType: 'VENDOR',
+      entityId: id,
+      companyId: dbUser.companyId,
+      newValues: { approvalStatus, reviewNotes },
     });
 
     return NextResponse.json(updated);
