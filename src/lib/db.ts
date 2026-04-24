@@ -161,7 +161,7 @@ export const db = {
         .from('companies')
         .select('*')
         .eq('id', where.id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data as Company | null;
     },
@@ -170,7 +170,7 @@ export const db = {
       if (where.ein) query = query.eq('ein', where.ein);
       if (where.email) query = query.eq('email', where.email);
       if (where.legalName) query = query.eq('legalName', where.legalName);
-      const { data, error } = await query.single();
+      const { data, error } = await query.maybeSingle();
       if (error) throw error;
       return data as Company | null;
     },
@@ -201,8 +201,8 @@ export const db = {
       const { data, error } = await supabaseAdmin
         .from('company_settings')
         .select('*')
-        .eq('companyId', where.companyId)
-        .single();
+        .eq('company_id', where.companyId)
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -210,8 +210,8 @@ export const db = {
       const { data: existing } = await supabaseAdmin
         .from('company_settings')
         .select('id')
-        .eq('companyId', data.companyId)
-        .single();
+        .eq('company_id', data.companyId)
+        .maybeSingle();
       
       if (existing) {
         const { data: result, error } = await supabaseAdmin
@@ -240,22 +240,22 @@ export const db = {
       let query = supabaseAdmin.from('users').select('*');
       if (where.id) query = query.eq('id', where.id);
       if (where.email) query = query.eq('email', where.email);
-      if (where.supabaseUid) query = query.eq('supabaseUid', where.supabaseUid);
-      const { data, error } = await query.single();
+      if (where.supabaseUid) query = query.eq('supabaseuid', where.supabaseUid);
+      const { data, error } = await query.maybeSingle();
       if (error) throw error;
       return data as User | null;
     },
     async findFirst(where: { email?: string; supabaseUid?: string }) {
       let query = supabaseAdmin.from('users').select('*');
       if (where.email) query = query.eq('email', where.email);
-      if (where.supabaseUid) query = query.eq('supabaseUid', where.supabaseUid);
-      const { data, error } = await query.single();
+      if (where.supabaseUid) query = query.eq('supabaseuid', where.supabaseUid);
+      const { data, error } = await query.maybeSingle();
       if (error) throw error;
       return data as User | null;
     },
     async findMany(where: { companyId?: string }) {
       let query = supabaseAdmin.from('users').select('*');
-      if (where.companyId) query = query.eq('companyId', where.companyId);
+      if (where.companyId) query = query.eq('company_id', where.companyId);
       const { data, error } = await query;
       if (error) throw error;
       return (data || []) as User[];
@@ -286,7 +286,7 @@ export const db = {
     },
     async count(where?: { companyId?: string; read?: boolean }) {
       let query = supabaseAdmin.from('users').select('*', { count: 'exact', head: true });
-      if (where?.companyId) query = query.eq('companyId', where.companyId);
+      if (where?.companyId) query = query.eq('company_id', where.companyId);
       const { count, error } = await query;
       if (error) throw error;
       return count || 0;
@@ -300,7 +300,7 @@ export const db = {
         .from('employees')
         .select('*')
         .eq('id', where.id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data as Employee | null;
     },
@@ -352,7 +352,7 @@ export const db = {
         .from('vendors')
         .select('*')
         .eq('id', where.id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data as Vendor | null;
     },
@@ -361,7 +361,7 @@ export const db = {
       if (where.id) query = query.eq('id', where.id);
       if (where.vendorId) query = query.eq('vendorId', where.vendorId);
       if (where.companyId) query = query.eq('companyId', where.companyId);
-      const { data, error } = await query.single();
+      const { data, error } = await query.maybeSingle();
       if (error) throw error;
       return data as Vendor | null;
     },
@@ -427,7 +427,7 @@ export const db = {
         .from('payments')
         .select('*')
         .eq('id', where.id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data as Payment | null;
     },
@@ -472,7 +472,7 @@ export const db = {
         .from('tax_forms')
         .select('*')
         .eq('id', where.id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data as TaxForm | null;
     },
@@ -528,7 +528,7 @@ export const db = {
         .from('notifications')
         .select('*')
         .eq('id', where.id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data as Notification | null;
     },
