@@ -353,40 +353,49 @@ export default function SubscriptionsPage() {
             </div>
           </div>
 
-          {/* Users Table */}
+          {/* Users Table - Accounting Standards */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+              <table className="w-full border-collapse">
+                {/* Header - Professional Accounting Style */}
+                <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-300">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plan</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Login</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="px-8 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Name</th>
+                    <th className="px-8 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Email</th>
+                    <th className="px-8 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Role</th>
+                    <th className="px-8 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Status</th>
+                    <th className="px-8 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Plan</th>
+                    <th className="px-8 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Joined Date</th>
+                    <th className="px-8 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Last Login</th>
+                    <th className="px-8 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.email}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.role}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(user.status)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.plan}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.joinedDate}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.lastLogin}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          <button className="text-blue-600 hover:text-blue-700">
+                {/* Body - Enhanced Readability */}
+                <tbody className="divide-y divide-gray-100">
+                  {users.map((user, index) => (
+                    <tr 
+                      key={user.id} 
+                      className={`transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-blue-50/30`}
+                    >
+                      <td className="px-8 py-5 text-sm font-semibold text-gray-900 border-r border-gray-100">{user.name}</td>
+                      <td className="px-8 py-5 text-sm text-gray-600 border-r border-gray-100">{user.email}</td>
+                      <td className="px-8 py-5 text-sm text-center border-r border-gray-100">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="px-8 py-5 text-center border-r border-gray-100">{getStatusBadge(user.status)}</td>
+                      <td className="px-8 py-5 text-sm text-center font-medium text-gray-700 border-r border-gray-100">{user.plan}</td>
+                      <td className="px-8 py-5 text-sm text-center text-gray-600 border-r border-gray-100">{user.joinedDate}</td>
+                      <td className="px-8 py-5 text-sm text-center text-gray-500 border-r border-gray-100">{user.lastLogin}</td>
+                      <td className="px-8 py-5 text-center">
+                        <div className="flex items-center justify-center space-x-3">
+                          <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleRemoveUser(user.id)}
-                            className="text-red-600 hover:text-red-700"
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Remove"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

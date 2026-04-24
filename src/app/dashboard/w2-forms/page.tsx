@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { FileText, Download, Calendar, User, Building2, DollarSign, AlertCircle } from 'lucide-react';
+import { FileText, Download, Calendar, User, Building2, DollarSign, AlertCircle, FileSpreadsheet } from 'lucide-react';
+import { exportToExcel, exportToPDF, formatCurrency, formatSSN, formatEIN } from '@/lib/export';
+import W2FormGenerator from '@/components/forms/W2Form';
 
 interface W2Form {
   id: string;
@@ -105,16 +107,52 @@ export default function W2FormsPage() {
     return yearMatch && employeeMatch;
   });
 
-  const handleGeneratePDF = async (formId: string) => {
-    setIsGenerating(true);
-    
-    // Simulate PDF generation
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // In real implementation, this would generate and download PDF
-    console.log(`Generating PDF for W-2 form ${formId}`);
-    
-    setIsGenerating(false);
+  const handleExportExcel = () => {
+    const data = {
+      headers: ['Employee', 'SSN', 'Tax Year', 'Wages (Box 1)', 'Federal Tax (Box 2)', 'SS Wages (Box 3)', 'SS Tax (Box 4)', 'Medicare Wages (Box 5)', 'Medicare Tax (Box 6)', 'State Wages (Box 16)', 'State Tax (Box 17)', 'Status'],
+      rows: w2Forms.map(form => [
+        form.employeeName,
+        formatSSN(form.employeeId.padStart(9, '0')), // Mock SSN formatting
+        form.taxYear.toString(),
+        form.wages,
+        form.federalTax,
+        form.socialSecurityWages,
+        form.socialSecurityTax,
+        form.medicareWages,
+        form.medicareTax,
+        form.stateWages,
+        form.stateTax,
+        form.status
+      ]),
+      title: 'W-2 Forms Summary',
+      companyInfo: {
+        name: 'TaxCore360 Client',
+      }
+    };
+    exportToExcel(data, `W2_Forms_${selectedYear}`);
+  };
+
+  const handleExportPDF = () => {
+    const data = {
+      headers: ['Employee', 'Tax Year', 'Wages', 'Federal Tax', 'SS Tax', 'Medicare', 'Status'],
+      rows: w2Forms.map(form => [
+        form.employeeName,
+        form.taxYear.toString(),
+        formatCurrency(form.wages),
+        formatCurrency(form.federalTax),
+        formatCurrency(form.socialSecurityTax),
+        formatCurrency(form.medicareTax),
+        form.status
+      ]),
+      title: 'W-2 Forms Summary Report',
+      companyInfo: {
+        name: 'TaxCore360 Client',
+        address: 'Generated via TaxCore360 Platform',
+        phone: 'Support: support@taxcore360.com',
+        email: 'info@taxcore360.com'
+      }
+    };
+    exportToPDF(data, `W2_Forms_Report_${selectedYear}`);
   };
 
   const handleGenerateAll = async () => {
@@ -141,16 +179,16 @@ export default function W2FormsPage() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      DRAFT: { color: 'bg-slate-500/20 text-slate-400', icon: <FileText className="w-3 h-3" /> },
-      GENERATED: { color: 'bg-blue-500/20 text-blue-400', icon: <FileText className="w-3 h-3" /> },
-      SUBMITTED: { color: 'bg-yellow-500/20 text-yellow-400', icon: <AlertCircle className="w-3 h-3" /> },
-      ACCEPTED: { color: 'bg-green-500/20 text-green-400', icon: <AlertCircle className="w-3 h-3" /> }
+      DRAFT: { color: 'bg-gray-100 text-gray-600 border border-gray-200', icon: <FileText className="w-3 h-3" /> },
+      GENERATED: { color: 'bg-blue-100 text-blue-700 border border-blue-200', icon: <FileText className="w-3 h-3" /> },
+      SUBMITTED: { color: 'bg-amber-100 text-amber-700 border border-amber-200', icon: <AlertCircle className="w-3 h-3" /> },
+      ACCEPTED: { color: 'bg-emerald-100 text-emerald-700 border border-emerald-200', icon: <AlertCircle className="w-3 h-3" /> }
     };
     
     const config = statusConfig[status as keyof typeof statusConfig];
     
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${config.color}`}>
         {config.icon}
         <span className="ml-1">{status}</span>
       </span>
@@ -356,42 +394,65 @@ export default function W2FormsPage() {
         </div>
       )}
 
-      {/* Forms Table */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+      {/* Export Buttons */}
+      <div className="flex justify-end space-x-3 mb-4">
+        <button
+          onClick={handleExportExcel}
+          className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          <span>Export Excel</span>
+        </button>
+        <button
+          onClick={handleExportPDF}
+          className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+        >
+          <FileText className="w-4 h-4" />
+          <span>Export PDF</span>
+        </button>
+      </div>
+
+      {/* Forms Table - Accounting Standards */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-900 border-b border-slate-700">
+          <table className="w-full border-collapse">
+            {/* Header - Professional Accounting Style */}
+            <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-300">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Employee</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Tax Year</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Wages</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Federal Tax</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">SS Tax</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Medicare</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Generated</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Actions</th>
+                <th className="px-8 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Employee</th>
+                <th className="px-8 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Tax Year</th>
+                <th className="px-8 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Wages (Box 1)</th>
+                <th className="px-8 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Federal Tax (Box 2)</th>
+                <th className="px-8 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">SS Tax (Box 4)</th>
+                <th className="px-8 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Medicare (Box 6)</th>
+                <th className="px-8 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Status</th>
+                <th className="px-8 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Generated</th>
+                <th className="px-8 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700">
-              {filteredForms.map((form) => (
-                <tr key={form.id} className="hover:bg-slate-700/50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{form.employeeName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{form.taxYear}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-300">{formatCurrency(form.wages)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-300">{formatCurrency(form.federalTax)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-300">{formatCurrency(form.socialSecurityTax)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-300">{formatCurrency(form.medicareTax)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(form.status)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{form.generatedAt || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+            {/* Body - Enhanced Readability */}
+            <tbody className="divide-y divide-gray-100">
+              {filteredForms.map((form, index) => (
+                <tr 
+                  key={form.id} 
+                  className={`transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-blue-50/30`}
+                >
+                  <td className="px-8 py-5 text-sm font-semibold text-gray-900 border-r border-gray-100">{form.employeeName}</td>
+                  <td className="px-8 py-5 text-sm text-center text-gray-700 border-r border-gray-100">{form.taxYear}</td>
+                  <td className="px-8 py-5 text-sm text-right font-mono text-gray-700 border-r border-gray-100">{formatCurrency(form.wages)}</td>
+                  <td className="px-8 py-5 text-sm text-right font-mono text-gray-700 border-r border-gray-100">{formatCurrency(form.federalTax)}</td>
+                  <td className="px-8 py-5 text-sm text-right font-mono text-gray-700 border-r border-gray-100">{formatCurrency(form.socialSecurityTax)}</td>
+                  <td className="px-8 py-5 text-sm text-right font-mono text-gray-700 border-r border-gray-100">{formatCurrency(form.medicareTax)}</td>
+                  <td className="px-8 py-5 text-center border-r border-gray-100">{getStatusBadge(form.status)}</td>
+                  <td className="px-8 py-5 text-sm text-center text-gray-600 border-r border-gray-100">{form.generatedAt || '-'}</td>
+                  <td className="px-8 py-5 text-center">
                     <button
-                      onClick={() => handleGeneratePDF(form.id)}
+                      onClick={() => {/* TODO: Generate individual W-2 */}}
                       disabled={isGenerating || form.status === 'DRAFT'}
-                      className="flex items-center space-x-1 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center justify-center space-x-1 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mx-auto"
                     >
                       <Download className="w-3 h-3" />
-                      <span>PDF</span>
+                      <span>W-2</span>
                     </button>
                   </td>
                 </tr>
@@ -399,6 +460,11 @@ export default function W2FormsPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* W-2 Generator Component */}
+      <div className="mt-8">
+        <W2FormGenerator />
       </div>
     </DashboardLayout>
   );
