@@ -8,15 +8,11 @@ export async function GET(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = await createClient();
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
     // Get user info from Supabase
     const { data: dbUser } = await supabaseAdmin
       .from('users')
       .select('companyId')
-      .eq('supabaseUid', authUser.id)
+      .eq('supabaseUid', user.id)
       .single();
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
@@ -42,14 +38,10 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = await createClient();
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
     const { data: dbUser } = await supabaseAdmin
       .from('users')
       .select('id, companyId')
-      .eq('supabaseUid', authUser.id)
+      .eq('supabaseUid', user.id)
       .single();
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
@@ -108,14 +100,10 @@ export async function PATCH(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = await createClient();
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
     const { data: dbUser } = await supabaseAdmin
       .from('users')
       .select('id, companyId')
-      .eq('supabaseUid', authUser.id)
+      .eq('supabaseUid', user.id)
       .single();
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
@@ -164,14 +152,10 @@ export async function DELETE(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = await createClient();
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
     const { data: dbUser } = await supabaseAdmin
       .from('users')
       .select('id, companyId')
-      .eq('supabaseUid', authUser.id)
+      .eq('supabaseUid', user.id)
       .single();
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
