@@ -176,11 +176,13 @@ export default function Sidebar() {
     return (
       <Link
         href={item.href || '#'}
-        className={`${baseClasses} ${active ? activeClasses : inactiveClasses} ${isChild ? 'pl-[32px]' : ''}`}
+        className={`${baseClasses} ${active ? activeClasses : inactiveClasses} ${isChild ? '!pl-[18px]' : ''}`}
         style={{ fontFamily: 'Inter, sans-serif', fontSize: isChild ? '12.5px' : '13px' }}
       >
-        {item.icon}
-        <span>{item.title}</span>
+        <span className={`flex items-center justify-center ${isChild ? 'w-4 h-4' : ''}`}>
+          {item.icon}
+        </span>
+        <span className="flex-1">{item.title}</span>
         {item.badge && (
           <span className="ml-auto text-[10px] font-medium bg-[rgba(59,130,246,0.20)] text-[#60a5fa] px-2 py-0.5 rounded">
             {item.badge}
@@ -215,7 +217,7 @@ export default function Sidebar() {
         </button>
         
         {expanded && item.children && (
-          <div className="pl-8 mt-0.5 space-y-0.5 overflow-hidden animate-slideDown">
+          <div className="pl-6 mt-1 space-y-0.5 overflow-hidden animate-slideDown border-l border-white/[0.06] ml-[22px]">
             {item.children.map((child) => (
               <NavButton key={child.title} item={child} isChild />
             ))}
@@ -240,8 +242,8 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation - Scrollable Content */}
-      <nav className="flex-1 overflow-y-auto px-4 py-2">
+      {/* Navigation - Scrollable Content with Custom Scrollbar */}
+      <nav className="flex-1 overflow-y-auto px-4 py-2 scrollbar-custom">
         {/* Main Section - spacing 24px (mb-6) */}
         <div className="mb-6">
           <h3 
@@ -319,6 +321,39 @@ export default function Sidebar() {
         }
         .animate-slideDown {
           animation: slideDown 300ms ease-out;
+        }
+        
+        /* Custom Scrollbar - Hidden by default, thin and dark */
+        .scrollbar-custom {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar {
+          width: 4px;
+          height: 4px;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-thumb {
+          background: rgba(148, 163, 184, 0.2);
+          border-radius: 4px;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+          background: rgba(148, 163, 184, 0.4);
+        }
+        
+        /* Hide scrollbar when not hovering */
+        .scrollbar-custom {
+          -ms-overflow-style: none;
+        }
+        
+        .scrollbar-custom:hover {
+          -ms-overflow-style: auto;
         }
       `}</style>
     </aside>

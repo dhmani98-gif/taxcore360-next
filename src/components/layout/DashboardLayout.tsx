@@ -65,10 +65,10 @@ export default function DashboardLayout({
           {/* Banner */}
           {banner && (
             <div className={`mt-4 p-3 rounded-lg flex items-center space-x-3 ${
-              banner.type === 'success' ? 'bg-green-500/20 border border-green-500/30 text-green-200' :
-              banner.type === 'warning' ? 'bg-yellow-500/20 border border-yellow-500/30 text-yellow-200' :
-              banner.type === 'error' ? 'bg-red-500/20 border border-red-500/30 text-red-200' :
-              'bg-blue-500/20 border border-blue-500/30 text-blue-200'
+              banner.type === 'success' ? 'bg-gradient-to-r from-emerald-500/20 to-green-500/30 border border-emerald-400/40 text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.15)]' :
+              banner.type === 'warning' ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/30 border border-amber-400/40 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.15)]' :
+              banner.type === 'error' ? 'bg-gradient-to-r from-rose-500/20 to-red-500/30 border border-rose-400/40 text-rose-300 shadow-[0_0_20px_rgba(244,63,94,0.15)]' :
+              'bg-gradient-to-r from-blue-500/20 to-cyan-500/30 border border-blue-400/40 text-cyan-200 shadow-[0_0_20px_rgba(59,130,246,0.15)]'
             }`}>
               <span className="text-sm font-medium">{banner.message}</span>
             </div>
