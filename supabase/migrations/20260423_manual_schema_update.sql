@@ -274,8 +274,4 @@ alter table public.company_subscriptions
   foreign key (plan_id)
   references public.subscription_plans(id);
 
-<<<<<<< HEAD
 commit;
-=======
-commit;
->>>>>>> 99af5435487df4fdf4cd5e4546e0ee76246b8e78
